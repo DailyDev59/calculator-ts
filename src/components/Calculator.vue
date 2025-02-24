@@ -5,9 +5,9 @@
     </button>
     <div class="display">
       <p class="calc">
-        {{ firstOperand || '0' }} {{ operator }} {{ secondOperand }}
+        {{ output || '0' }}
       </p>
-      <p class="result">{{ result }}</p>
+      <p class="result">{{ subtotal || '0' }}</p>
     </div>
     <div class="keyboard-up">
       <button @click="clearLastCharacter" class="brown">Backspace</button>
@@ -15,75 +15,70 @@
       <button @click="clearCalculator" class="brown">C</button>
     </div>
     <div class="keyboard">
-      <button class="gray">
+      <button @click="clearItem" class="gray">
         <img src="./../assets/img/mc.svg" alt="mc" />
       </button>
-      <button class="gray">
+      <button @click="saveItem" class="gray ms">ms</button>
+      <button @click="minusItem" class="gray ms">m&ndash;</button>
+      <button @click="plusItem" class="gray">
         <img src="./../assets/img/m+.svg" alt="m+" />
-      </button>
-      <button class="gray ms">
-        ms
-        
-      </button>
-      <button class="gray">
-        <img src="./../assets/img/mr.svg" alt="mr" />
       </button>
       <button @click="negateValue" class="brown">
         <img src="./../assets/img/plus-minus.svg" alt="plus-minus" />
       </button>
-      <button @click="operator = '%'" class="brown">
+      <button @click="enterNum('%')" class="brown">
         <img
           id="percentage"
           src="./../assets/img/icons8-percentage-100.png"
           alt="percentage"
         />
       </button>
-      <button @click="operator = '÷'" class="brown">
+      <button @click="enterNum('÷')" class="brown">
         <img src="./../assets/img/divide.svg" alt="divide" />
       </button>
-      <button @click="operator = 'x'" class="brown">
+      <button @click="enterNum('x')" class="brown">
         <img src="./../assets/img/multiply.svg" alt="multiply" />
       </button>
-      <button @click="pressed('7')" class="black">
+      <button @click="enterNum('7')" class="black">
         <img src="./../assets/img/seven.svg" alt="seven" />
       </button>
-      <button @click="pressed('8')" class="black">
+      <button @click="enterNum('8')" class="black">
         <img src="./../assets/img/eight.svg" alt="eight" />
       </button>
-      <button @click="pressed('9')" class="black">
+      <button @click="enterNum('9')" class="black">
         <img src="./../assets/img/nine.svg" alt="nine" />
       </button>
-      <button @click="operator = '-'" class="brown">
+      <button @click="enterNum('-')" class="brown">
         <img src="./../assets/img/minus.svg" alt="minus" />
       </button>
-      <button @click="pressed('4')" class="black">
+      <button @click="enterNum('4')" class="black">
         <img src="./../assets/img/four.svg" alt="four" />
       </button>
-      <button @click="pressed('5')" class="black">
+      <button @click="enterNum('5')" class="black">
         <img src="./../assets/img/five.svg" alt="five" />
       </button>
-      <button @click="pressed('6')" class="black">
+      <button @click="enterNum('6')" class="black">
         <img src="./../assets/img/six.svg" alt="six" />
       </button>
-      <button @click="operator = '+'" class="brown">
+      <button @click="enterNum('+')" class="brown">
         <img src="./../assets/img/plus.svg" alt="plus" />
       </button>
-      <button @click="pressed('1')" class="black">
+      <button @click="enterNum('1')" class="black">
         <img src="./../assets/img/one.svg" alt="one" />
       </button>
-      <button @click="pressed('2')" class="black">
+      <button @click="enterNum('2')" class="black">
         <img src="./../assets/img/two.svg" alt="two" />
       </button>
-      <button @click="pressed('3')" class="black">
+      <button @click="enterNum('3')" class="black">
         <img src="./../assets/img/three.svg" alt="three" />
       </button>
-      <button @click="calculate()" class="orange">
+      <button @click="calculate(numOne, numTwo, operator)" class="orange">
         <img src="./../assets/img/equal.svg" alt="equal" />
       </button>
-      <button @click="pressed('0')" class="black box0">
+      <button @click="enterNum('0')" class="black box0">
         <img src="./../assets/img/zero.svg" alt="zero" />
       </button>
-      <button @click="pressed(',')" class="black">
+      <button @click="enterNum(',')" class="black">
         <img src="./../assets/img/comma.svg" alt="comma" />
       </button>
     </div>
@@ -91,69 +86,91 @@
 </template>
 
 <script setup lang="ts">
-import { defineComponent, ref } from 'vue'
+import { ref } from 'vue'
 
-const firstOperand = ref('')
-const secondOperand = ref('')
-const currentNum = ref('')
-const result = ref('')
-const operators = ['+', '-', 'x', '÷', '%']
+type op = '+' | '-' | 'x' | '÷' | '%'
+
+let output = ref('')
+const numOne = ref('')
+const numTwo = ref('')
+let subtotal = ref('')
 const operator = ref('')
-const numbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ',']
 
-const pressed = (value: string) => {
-  if (!operator.value) {
-    firstOperand.value = firstOperand.value + value
-  } else {
-    secondOperand.value = secondOperand.value + value
+const ops = ['+', '-', 'x', '÷', '%']
+const numbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ',']
+const arrayNumTwo = ref<string[]>([])
+
+let items: string[] = []
+const item = ref(items[0])
+
+const enterNum = (val: string) => {
+  // if 0-9 entered
+  if (numbers.includes(val)) {
+    if (!numTwo.value && !operator.value) {
+      numOne.value += val
+      output.value = numOne.value
+    }
+    if (numOne.value && operator.value) {
+      numTwo.value += val
+      output.value = numTwo.value
+    }
+    console.log(numOne.value, operator.value, numTwo.value)
+  }
+
+  // if + - x ÷ entered
+  if (ops.includes(val)) {
+    operator.value = val
+    output.value = operator.value
+    // subtotal.value = ''
+    console.log(numOne.value, operator.value, numTwo.value)
   }
 }
 
-const calculate = (): string => {
-  switch (operator.value) {
+const calculate = (a: string, b: string, op: string): string => {
+  switch (op) {
     case '+':
-      return (result.value = (
-        +firstOperand.value + +secondOperand.value
-      ).toString())
+      a = (+a + +b).toString()
+      break
     case '-':
-      return (result.value = (
-        +firstOperand.value - +secondOperand.value
-      ).toString())
+      a = (+a - +b).toString()
+      break
     case 'x':
-      return (result.value = (
-        +firstOperand.value * +secondOperand.value
-      ).toString())
+      a = (+a * +b).toString()
+      break
     case '÷':
-      if (secondOperand.value === '0') {
-        throw Error('Error. Division by zero')
-      } else {
-        return (result.value = (
-          +firstOperand.value / +secondOperand.value
-        ).toString())
-      }
+      a = (+a / +b).toString()
+      break
     case '%':
-      return (result.value = (+firstOperand.value / 100).toString())
-  }
+      return (a = (+a / 100).toString())
+  }  
+  numOne.value = a
+  subtotal.value = a
+  numTwo.value = ''  
+  output.value = numOne.value
+  console.log(numOne.value, operator.value, numTwo.value)
 }
 
 const clearCalculator = () => {
-  firstOperand.value = ''
+  numOne.value = ''
   operator.value = ''
-  secondOperand.value = ''
-  result.value = ''
+  numTwo.value = ''
+  output.value = ''
+  subtotal.value = ''
+  clearItem()
 }
 
 const clearLastNumber = () => {
   if (operator.value) {
-    secondOperand.value = ''
-    result.value = ''
+    numTwo.value = ''
+    subtotal.value = ''
+    operator.value = ''
+    numOne.value = ''
   }
 }
 
 const clearLastCharacter = () => {
   // Combine all components into a single string
-  const currentExpression =
-    firstOperand.value + operator.value + secondOperand.value
+  const currentExpression = numOne.value + operator.value + numTwo.value
 
   if (currentExpression.length === 0) return
 
@@ -161,28 +178,30 @@ const clearLastCharacter = () => {
   const newExpression = currentExpression.slice(0, -1)
 
   // Parse the new expression back into components
-  const operatorIndex = newExpression.search(/[+\-x÷]/)
+  const opIndex = newExpression.search(/[+\-x÷]/)
 
-  if (operatorIndex === -1) {
-    // No operator found - treat everything as firstOperand
-    firstOperand.value = newExpression
+  if (opIndex === -1) {
+    // No op found - treat everything as numOne
+    numOne.value = newExpression
     operator.value = ''
-    secondOperand.value = ''
+    numTwo.value = ''
   } else {
-    // Split into firstOperand, operator, and secondOperand
-    firstOperand.value = newExpression.slice(0, operatorIndex)
-    operator.value = newExpression[operatorIndex]
-    secondOperand.value = newExpression.slice(operatorIndex + 1)
+    // Split into numOne, op, and numTwo
+    numOne.value = newExpression.slice(0, opIndex)
+    operator.value = newExpression[opIndex]
+    numTwo.value = newExpression.slice(opIndex + 1)
   }
 }
 
 const negateValue = () => {
   if (operator.value) {
     // negate second operand
-    return (secondOperand.value = toggleSign(secondOperand.value))
+    numTwo.value = toggleSign(numTwo.value)
+    output.value = numTwo.value
   } else {
     // negate first operand
-    firstOperand.value = toggleSign(firstOperand.value)
+    numOne.value = toggleSign(numOne.value)
+    output.value = numOne.value
   }
 }
 
@@ -192,6 +211,35 @@ const toggleSign = (value: string): string => {
   // remove standalone
   if (value === '-') return ''
   return value.startsWith('-') ? value.slice(1) : `-${value}`
+}
+
+const saveItem = () => {
+  if (subtotal.value || numOne.value) {
+    items.push(subtotal.value || numOne.value)
+  }
+  if (items.length > 1) items.shift()
+
+  console.log(items[0])
+}
+
+const clearItem = () => {
+  if (items) items = []
+}
+
+const plusItem = () => {
+  if (subtotal.value || numOne.value) {
+    subtotal.value = (
+      parseFloat(items[0]) + parseFloat(numOne.value)
+    ).toString()
+  }
+}
+
+const minusItem = () => {
+  if (subtotal.value || numOne.value) {
+    subtotal.value = (
+      parseFloat(numOne.value) - parseFloat(items[0])
+    ).toString()
+  }
 }
 </script>
 
