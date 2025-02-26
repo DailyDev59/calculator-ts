@@ -8,7 +8,7 @@
         {{ expression }}{{ currentInput }}
       </p>
       <p class="result">
-        <div v-if="subtotal !== null"> {{ subtotal }}</div>
+        <div> {{ subtotal }}</div>
       </p>
     </div>
     <div class="keyboard-up">
