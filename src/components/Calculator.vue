@@ -4,11 +4,12 @@
       <img src="./../assets/img/icons8-history-48.png" alt="" />
     </button>
     <div class="display">
-      <p class="calc">
-        {{ expression }}{{ currentInput }}
-      </p>
-      <p class="result">
-        <div> {{ subtotal }}</div>
+      <p class="calc">{{ expression }}{{ currentInput }}</p>
+      <p
+        v-if="expression.includes('%') || (expression && currentInput)"
+        class="result"
+      >
+        {{ subtotal }}
       </p>
     </div>
     <div class="keyboard-up">
@@ -28,7 +29,7 @@
       <button class="brown">
         <img src="./../assets/img/plus-minus.svg" alt="plus-minus" />
       </button>
-      <button @click="enterNum('%')" class="brown">
+      <button @click="handleOperator('%')" class="brown">
         <img
           id="percentage"
           src="./../assets/img/icons8-percentage-100.png"
@@ -92,67 +93,97 @@ import { ref } from 'vue'
 
 const expression = ref('')
 const currentInput = ref('')
+const percentageToken = ref('')
 const subtotal = ref<number | null>(null)
 
 const enterNum = (digit: string) => {
   currentInput.value += digit
-  calculateIntermediate()
-}
-
-const handleOperator = (operator: string) => {
-  if (currentInput.value) {
-    expression.value += currentInput.value + operator
-    currentInput.value = ''
-    calculateIntermediate()
-  } else if (expression.value) {
-    // Replace the last operator
-    expression.value = expression.value.slice(0, -1) + operator
-    calculateIntermediate()
-  }
-}
-
-const calculateIntermediate = () => {
   const expr = expression.value + currentInput.value
   subtotal.value = evaluateExpression(expr)
 }
 
-const  evaluateExpression = (expr: string): number | null => {
+const handleOperator = (operator: string) => {
+  if (currentInput.value) {    
+    expression.value += currentInput.value + operator    
+    currentInput.value = ''
+    const expr = expression.value + currentInput.value
+    subtotal.value = evaluateExpression(expr)
+  } else if (expression.value) {
+    // Replace the last operator
+    expression.value = expression.value.slice(0, -1) + operator
+    const expr = expression.value + currentInput.value
+    subtotal.value = evaluateExpression(expr)
+  }
+}
+
+const evaluateExpression = (expr: string): number | null => {
   if (!expr) return null
 
-  // Tokenize the expression
-  const tokens = expr.match(/(\d+|\+|-|x|÷)/g)
+  // Разбиваем выражение на токены
+  const tokens = expr.match(/(\d+|\+|-|x|÷|%)/g)  
   if (!tokens) return null
 
-  const stack: number[] = []
+  let stack: number[] = []
   let currentOperator: string | null = null
 
   for (const token of tokens) {
     if (/\d+/.test(token)) {
       const number = parseFloat(token)
       if (currentOperator) {
-        const prevNumber = stack.pop()!
+        const prevNumber = stack.pop()!        
         if (currentOperator === '+') stack.push(prevNumber + number)
         else if (currentOperator === '-') stack.push(prevNumber - number)
         else if (currentOperator === 'x') stack.push(prevNumber * number)
         else if (currentOperator === '÷') stack.push(prevNumber / number)
-        currentOperator = null
-      } else {
+        } else {
         stack.push(number)
       }
-    } else if (/[\+-x÷]/.test(token)) {
-      currentOperator = token
+    } else if (/[\+-x÷%]/.test(token)) {
+
+      // Percentage directly
+      if (token === '%' && tokens.length === 2) {        
+        const prevNumber = stack.pop()!
+        stack.push(prevNumber / 100) // Calculate percentage of the previous number
+        console.log(stack);
+        currentOperator = null // Reset the operator after handling '%'
+        percentageToken.value = token        
+      } else {
+        currentOperator = token
+      }
+      if (tokens.includes('+') && token === '%') {  
+
+              // Plus percentage
+        stack.push(
+          parseFloat(tokens[0]) +
+            (parseFloat(tokens[0]) * parseFloat(tokens[2])) / 100
+        )
+        stack.shift()
+        percentageToken.value = token        
+      }
+      if (tokens.includes('-') && token === '%') {  
+
+            // Minus percentage
+        stack.push(
+          parseFloat(tokens[0]) -
+            (parseFloat(tokens[0]) * parseFloat(tokens[2])) / 100
+        )
+        stack.shift()
+        percentageToken.value = token        
+      }
     }
   }
-
   return stack.length > 0 ? stack[0] : null
 }
 
 const handleEqual = () => {
-  if (currentInput.value) {
-    expression.value += currentInput.value
+  if (currentInput.value || percentageToken.value) {
+    expression.value += currentInput.value    
     currentInput.value = ''
-    calculateIntermediate()
-    expression.value = '' // Reset after calculation
+    const expr = expression.value + currentInput.value
+    subtotal.value = evaluateExpression(expr)
+    expression.value = ''
+    currentInput.value = subtotal.value.toString()
+    subtotal.value = null
   }
 }
 
