@@ -103,81 +103,101 @@ const enterNum = (digit: string) => {
 }
 
 const handleOperator = (operator: string) => {
-  if (currentInput.value) {    
-    expression.value += currentInput.value + operator    
+  if (currentInput.value) {
+    expression.value += currentInput.value + operator
     currentInput.value = ''
-    const expr = expression.value + currentInput.value
-    subtotal.value = evaluateExpression(expr)
+    subtotal.value = evaluateExpression(expression.value)
   } else if (expression.value) {
     // Replace the last operator
-    expression.value = expression.value.slice(0, -1) + operator
-    const expr = expression.value + currentInput.value
-    subtotal.value = evaluateExpression(expr)
+    // expression.value = expression.value.slice(0, -1) + operator
+    expression.value += operator
+    subtotal.value = evaluateExpression(expression.value)
   }
 }
 
 const evaluateExpression = (expr: string): number | null => {
   if (!expr) return null
 
-  // Разбиваем выражение на токены
-  const tokens = expr.match(/(\d+|\+|-|x|÷|%)/g)  
-  if (!tokens) return null
+  // Token merging logic (same as before)
+  const rawTokens = expr.match(/(\d+|\+|-|x|÷|%)/g) || []
+  const mergedTokens: string[] = []
+  for (let i = 0; i < rawTokens.length; i++) {
+    const token = rawTokens[i]
+    if (
+      token === '%' &&
+      mergedTokens.length > 0 &&
+      /\d+/.test(mergedTokens[mergedTokens.length - 1])
+    ) {
+      mergedTokens[mergedTokens.length - 1] += '%'
+    } else {
+      mergedTokens.push(token)
+    }
+  }
 
   let stack: number[] = []
   let currentOperator: string | null = null
 
-  for (const token of tokens) {
-    if (/\d+/.test(token)) {
+  for (const token of mergedTokens) {
+    if (token.endsWith('%')) {
+      const number = parseFloat(token.slice(0, -1))
+      if (currentOperator) {
+        const prevNumber = stack.pop()!
+        switch (currentOperator) {
+          case '+':
+            // X + (X * Y%)
+            stack.push(prevNumber + prevNumber * (number / 100))
+            break
+          case '-':
+            // X - (X * Y%)
+            stack.push(prevNumber - prevNumber * (number / 100))
+            break
+          case 'x':
+            // X * (Y / 100)
+            stack.push(prevNumber * (number / 100))
+            break
+          case '÷':
+            // X / (Y / 100)
+            stack.push(prevNumber / (number / 100))
+            break
+        }
+        currentOperator = null // Reset operator after use
+      } else {
+        // Standalone percentage (e.g., "100%")
+        stack.push(number / 100)
+      }
+    } else if (/\d+/.test(token)) {
       const number = parseFloat(token)
       if (currentOperator) {
-        const prevNumber = stack.pop()!        
-        if (currentOperator === '+') stack.push(prevNumber + number)
-        else if (currentOperator === '-') stack.push(prevNumber - number)
-        else if (currentOperator === 'x') stack.push(prevNumber * number)
-        else if (currentOperator === '÷') stack.push(prevNumber / number)
-        } else {
+        const prevNumber = stack.pop()!
+        switch (currentOperator) {
+          case '+':
+            stack.push(prevNumber + number)
+            break
+          case '-':
+            stack.push(prevNumber - number)
+            break
+          case 'x':
+            stack.push(prevNumber * number)
+            break
+          case '÷':
+            stack.push(prevNumber / number)
+            break
+        }
+        currentOperator = null
+      } else {
         stack.push(number)
       }
-    } else if (/[\+-x÷%]/.test(token)) {
-
-      // Percentage directly
-      if (token === '%' && tokens.length === 2) {        
-        const prevNumber = stack.pop()!
-        stack.push(prevNumber / 100) // Calculate percentage of the previous number
-        console.log(stack);
-        currentOperator = null // Reset the operator after handling '%'
-        percentageToken.value = token        
-      } else {
-        currentOperator = token
-      }
-      if (tokens.includes('+') && token === '%') {  
-
-              // Plus percentage
-        stack.push(
-          parseFloat(tokens[0]) +
-            (parseFloat(tokens[0]) * parseFloat(tokens[2])) / 100
-        )
-        stack.shift()
-        percentageToken.value = token        
-      }
-      if (tokens.includes('-') && token === '%') {  
-
-            // Minus percentage
-        stack.push(
-          parseFloat(tokens[0]) -
-            (parseFloat(tokens[0]) * parseFloat(tokens[2])) / 100
-        )
-        stack.shift()
-        percentageToken.value = token        
-      }
+    } else if (/[\+\-x÷]/.test(token)) {
+      currentOperator = token
     }
   }
-  return stack.length > 0 ? stack[0] : null
+
+  return stack.length > 0 ? stack[0] : null // <- Ensure this line exists
 }
 
 const handleEqual = () => {
   if (currentInput.value || percentageToken.value) {
-    expression.value += currentInput.value    
+    expression.value += currentInput.value
     currentInput.value = ''
     const expr = expression.value + currentInput.value
     subtotal.value = evaluateExpression(expr)
