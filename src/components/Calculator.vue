@@ -9,7 +9,7 @@
         v-if="expression.includes('%') || (expression && currentInput)"
         class="result"
       >
-        {{ subtotal }}
+        {{ formattedSubtotal }}
       </p>
     </div>
     <div class="keyboard-up">
@@ -18,9 +18,7 @@
       <button @click="clear" class="brown">C</button>
     </div>
     <div class="keyboard">
-      <button class="gray">
-        <img src="./../assets/img/mc.svg" alt="mc" />
-      </button>
+      <button class="gray ms">( )</button>
       <button class="gray ms">ms</button>
       <button class="gray ms">m&ndash;</button>
       <button class="gray">
@@ -89,12 +87,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const expression = ref('')
 const currentInput = ref('')
 const percentageToken = ref('')
 const subtotal = ref<number | null>(null)
+const total = ref('')
+const OPERATORS = new Set(['+', '-', 'x', '÷'])
+
+const normalizeExpression = (expr: string): string => {
+  return expr.replace(/,/g, '.') // Replace commas with dots
+}
 
 const enterNum = (digit: string) => {
   currentInput.value += digit
@@ -104,13 +108,32 @@ const enterNum = (digit: string) => {
 
 const handleOperator = (operator: string) => {
   if (currentInput.value) {
+    // If there's current input, append it and the operator
     expression.value += currentInput.value + operator
     currentInput.value = ''
     subtotal.value = evaluateExpression(expression.value)
   } else if (expression.value) {
-    // Replace the last operator
-    // expression.value = expression.value.slice(0, -1) + operator
-    expression.value += operator
+    const lastChar = expression.value[expression.value.length - 1]
+
+    // Disallow double percentage operators (%%)
+    if (operator === '%' && lastChar === '%') {
+      // Do nothing if the last character is already '%'
+      return
+    }
+
+    // Allow percentage-related operators (e.g., %+, %-)
+    if (lastChar === '%') {
+      expression.value += operator
+    }
+    // Check if the last character is an operator (excluding '%')
+    else if (OPERATORS.has(lastChar)) {
+      // Replace the last operator
+      expression.value = expression.value.slice(0, -1) + operator
+    } else {
+      // Append the new operator
+      expression.value += operator
+    }
+
     subtotal.value = evaluateExpression(expression.value)
   }
 }
@@ -118,17 +141,20 @@ const handleOperator = (operator: string) => {
 const evaluateExpression = (expr: string): number | null => {
   if (!expr) return null
 
-  // Token merging logic (same as before)
-  const rawTokens = expr.match(/(\d+|\+|-|x|÷|%)/g) || []
+  // Normalize input: replace commas with dots
+  const normalizedExpr = normalizeExpression(expr)
+
+  // Token merging logic with decimal support
+  const rawTokens = normalizedExpr.match(/(\d*\.?\d+|\+|-|x|÷|%)/g) || []
   const mergedTokens: string[] = []
   for (let i = 0; i < rawTokens.length; i++) {
     const token = rawTokens[i]
     if (
       token === '%' &&
       mergedTokens.length > 0 &&
-      /\d+/.test(mergedTokens[mergedTokens.length - 1])
+      /\d*\.?\d+$/.test(mergedTokens[mergedTokens.length - 1])
     ) {
-      mergedTokens[mergedTokens.length - 1] += '%'
+      mergedTokens[mergedTokens.length - 1] += '%' // Merge with previous number
     } else {
       mergedTokens.push(token)
     }
@@ -145,42 +171,46 @@ const evaluateExpression = (expr: string): number | null => {
         switch (currentOperator) {
           case '+':
             // X + (X * Y%)
-            stack.push(prevNumber + prevNumber * (number / 100))
+            stack.push(
+              roundToDecimal(prevNumber + prevNumber * (number / 100), 10)
+            )
             break
           case '-':
             // X - (X * Y%)
-            stack.push(prevNumber - prevNumber * (number / 100))
+            stack.push(
+              roundToDecimal(prevNumber - prevNumber * (number / 100), 10)
+            )
             break
           case 'x':
             // X * (Y / 100)
-            stack.push(prevNumber * (number / 100))
+            stack.push(roundToDecimal(prevNumber * (number / 100), 10))
             break
           case '÷':
             // X / (Y / 100)
-            stack.push(prevNumber / (number / 100))
+            stack.push(roundToDecimal(prevNumber / (number / 100), 10))
             break
         }
         currentOperator = null // Reset operator after use
       } else {
         // Standalone percentage (e.g., "100%")
-        stack.push(number / 100)
+        stack.push(roundToDecimal(number / 100, 10))
       }
-    } else if (/\d+/.test(token)) {
+    } else if (/\d*\.?\d+/.test(token)) {
       const number = parseFloat(token)
       if (currentOperator) {
         const prevNumber = stack.pop()!
         switch (currentOperator) {
           case '+':
-            stack.push(prevNumber + number)
+            stack.push(roundToDecimal(prevNumber + number, 10))
             break
           case '-':
-            stack.push(prevNumber - number)
+            stack.push(roundToDecimal(prevNumber - number, 10))
             break
           case 'x':
-            stack.push(prevNumber * number)
+            stack.push(roundToDecimal(prevNumber * number, 10))
             break
           case '÷':
-            stack.push(prevNumber / number)
+            stack.push(roundToDecimal(prevNumber / number, 10))
             break
         }
         currentOperator = null
@@ -192,17 +222,33 @@ const evaluateExpression = (expr: string): number | null => {
     }
   }
 
-  return stack.length > 0 ? stack[0] : null // <- Ensure this line exists
+  return stack.length > 0 ? roundToDecimal(stack[0], 10) : null // Round final result
+}
+
+const formatSubtotal = (result: number | null): string => {
+  if (result === null) return ''
+  return result.toString().replace(/\./g, ',') // Replace dots with commas
+}
+
+const formattedSubtotal = computed(() => formatSubtotal(subtotal.value))
+
+const roundToDecimal = (value: number, decimals: number): number => {
+  const factor = Math.pow(10, decimals)
+  return Math.round(value * factor) / factor
 }
 
 const handleEqual = () => {
-  if (currentInput.value || percentageToken.value) {
+  if (
+    currentInput.value ||
+    percentageToken.value ||
+    expression.value.includes('%')
+  ) {
     expression.value += currentInput.value
     currentInput.value = ''
     const expr = expression.value + currentInput.value
     subtotal.value = evaluateExpression(expr)
     expression.value = ''
-    currentInput.value = subtotal.value.toString()
+    currentInput.value = formattedSubtotal.value.toString()
     subtotal.value = null
   }
 }
@@ -324,6 +370,6 @@ img {
 .ms {
   color: #ffffff;
   font-weight: 600;
-  font-size: 1.6rem;
+  font-size: 1.8rem;
 }
 </style>
