@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
   <div class="calculator">
     <button class="history">
       <img src="./../assets/img/icons8-history-48.png" alt="" />
@@ -84,183 +84,179 @@
       </button>
     </div>
   </div>
-</template>
+</template> -->
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
 const expression = ref('')
-const currentInput = ref('')
-const percentageToken = ref('')
-const subtotal = ref<number | null>(null)
-const total = ref('')
-const OPERATORS = new Set(['+', '-', 'x', '÷'])
+let index = ref(0)
+const length = computed(() => expression.value.length)
 
-const normalizeExpression = (expr: string): string => {
-  return expr.replace(/,/g, '.') // Replace commas with dots
+const isWhiteSpace = (ch: string) => {
+  return ch === 'u0009' || ch === ' ' || ch === 'u00A0'
 }
 
-const enterNum = (digit: string) => {
-  currentInput.value += digit
-  const expr = expression.value + currentInput.value
-  subtotal.value = evaluateExpression(expr)
+const isLetter = (ch: string) => {
+  return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
 }
 
-const handleOperator = (operator: string) => {
-  if (currentInput.value) {
-    // If there's current input, append it and the operator
-    expression.value += currentInput.value + operator
-    currentInput.value = ''
-    subtotal.value = evaluateExpression(expression.value)
-  } else if (expression.value) {
-    const lastChar = expression.value[expression.value.length - 1]
+const isDecimalDigit = (ch: string) => {
+  return ch >= '0' && ch <= '9'
+}
 
-    // Disallow double percentage operators (%%)
-    if (operator === '%' && lastChar === '%') {
-      // Do nothing if the last character is already '%'
-      return
-    }
-
-    // Allow percentage-related operators (e.g., %+, %-)
-    if (lastChar === '%') {
-      expression.value += operator
-    }
-    // Check if the last character is an operator (excluding '%')
-    else if (OPERATORS.has(lastChar)) {
-      // Replace the last operator
-      expression.value = expression.value.slice(0, -1) + operator
-    } else {
-      // Append the new operator
-      expression.value += operator
-    }
-
-    subtotal.value = evaluateExpression(expression.value)
+const createToken = (type: string, value: string) => {
+  return {
+    type: type,
+    value: value,
   }
 }
 
-const evaluateExpression = (expr: string): number | null => {
-  if (!expr) return null
+const getNextChar = () => {
+  let ch = '\x00',
+    idx = index
+  if (idx < length) {
+    ch = expression.value.charAt(idx.value)
+    index.value += 1
+  }
+  return ch
+}
 
-  // Normalize input: replace commas with dots
-  const normalizedExpr = normalizeExpression(expr)
+function peekNextChar() {
+  var idx = index
+  return idx < length ? expression.value.charAt(idx.value) : '\x00'
+}
 
-  // Token merging logic with decimal support
-  const rawTokens = normalizedExpr.match(/(\d*\.?\d+|\+|-|x|÷|%)/g) || []
-  const mergedTokens: string[] = []
-  for (let i = 0; i < rawTokens.length; i++) {
-    const token = rawTokens[i]
-    if (
-      token === '%' &&
-      mergedTokens.length > 0 &&
-      /\d*\.?\d+$/.test(mergedTokens[mergedTokens.length - 1])
-    ) {
-      mergedTokens[mergedTokens.length - 1] += '%' // Merge with previous number
-    } else {
-      mergedTokens.push(token)
+const skipSpaces = () => {
+  let ch: string
+
+  while (index < length) {
+    ch = peekNextChar()
+    if (!isWhiteSpace(ch)) {
+      break
     }
+    getNextChar()
+  }
+}
+
+const scanOperator = () => {
+  let ch = peekNextChar()
+  if ('+-*/()='.indexOf(ch) >= 0) {
+    return createToken('Operator', getNextChar())
+  }
+  return undefined
+}
+
+const isIdentifierStart = (ch: string) => {
+  return ch === '_' || isLetter(ch)
+}
+
+const isIdentifierPart = (ch: string) => {
+  return isIdentifierStart(ch) || isDecimalDigit(ch)
+}
+
+const scanIdentifier = () => {
+  let ch: string, id: string
+
+  ch = peekNextChar()
+  if (!isIdentifierStart(ch)) {
+    return undefined
   }
 
-  let stack: number[] = []
-  let currentOperator: string | null = null
+  id = getNextChar()
+  while (true) {
+    ch = peekNextChar()
+    if (!isIdentifierPart(ch)) {
+      break
+    }
+    id += getNextChar()
+  }
 
-  for (const token of mergedTokens) {
-    if (token.endsWith('%')) {
-      const number = parseFloat(token.slice(0, -1))
-      if (currentOperator) {
-        const prevNumber = stack.pop()!
-        switch (currentOperator) {
-          case '+':
-            // X + (X * Y%)
-            stack.push(
-              roundToDecimal(prevNumber + prevNumber * (number / 100), 10)
-            )
-            break
-          case '-':
-            // X - (X * Y%)
-            stack.push(
-              roundToDecimal(prevNumber - prevNumber * (number / 100), 10)
-            )
-            break
-          case 'x':
-            // X * (Y / 100)
-            stack.push(roundToDecimal(prevNumber * (number / 100), 10))
-            break
-          case '÷':
-            // X / (Y / 100)
-            stack.push(roundToDecimal(prevNumber / (number / 100), 10))
-            break
-        }
-        currentOperator = null // Reset operator after use
-      } else {
-        // Standalone percentage (e.g., "100%")
-        stack.push(roundToDecimal(number / 100, 10))
+  return createToken('Identifier', id)
+}
+
+const scanNumber = () => {
+  // return a token representing a number
+  // or undefined if no number is recognized
+  let ch: string
+
+  ch = peekNextChar()
+  if (!isDecimalDigit(ch) && ch !== '.') {
+    return undefined
+  }
+
+  let number: string
+
+  number = ''
+  if (ch !== '.') {
+    number = getNextChar()
+    while (true) {
+      ch = peekNextChar()
+      if (!isDecimalDigit(ch)) {
+        break
       }
-    } else if (/\d*\.?\d+/.test(token)) {
-      const number = parseFloat(token)
-      if (currentOperator) {
-        const prevNumber = stack.pop()!
-        switch (currentOperator) {
-          case '+':
-            stack.push(roundToDecimal(prevNumber + number, 10))
-            break
-          case '-':
-            stack.push(roundToDecimal(prevNumber - number, 10))
-            break
-          case 'x':
-            stack.push(roundToDecimal(prevNumber * number, 10))
-            break
-          case '÷':
-            stack.push(roundToDecimal(prevNumber / number, 10))
-            break
-        }
-        currentOperator = null
-      } else {
-        stack.push(number)
-      }
-    } else if (/[\+\-x÷]/.test(token)) {
-      currentOperator = token
+      number += getNextChar()
     }
   }
 
-  return stack.length > 0 ? roundToDecimal(stack[0], 10) : null // Round final result
-}
-
-const formatSubtotal = (result: number | null): string => {
-  if (result === null) return ''
-  return result.toString().replace(/\./g, ',') // Replace dots with commas
-}
-
-const formattedSubtotal = computed(() => formatSubtotal(subtotal.value))
-
-const roundToDecimal = (value: number, decimals: number): number => {
-  const factor = Math.pow(10, decimals)
-  return Math.round(value * factor) / factor
-}
-
-const handleEqual = () => {
-  if (
-    currentInput.value ||
-    percentageToken.value ||
-    expression.value.includes('%')
-  ) {
-    expression.value += currentInput.value
-    currentInput.value = ''
-    const expr = expression.value + currentInput.value
-    subtotal.value = evaluateExpression(expr)
-    expression.value = ''
-    currentInput.value = formattedSubtotal.value.toString()
-    subtotal.value = null
+  if (ch === '.') {
+    number += getNextChar()
+    while (true) {
+      ch = peekNextChar()
+      if (!isDecimalDigit(ch)) {
+        break
+      }
+      number += getNextChar()
+    }
   }
+
+  if (ch === 'e' || ch === 'E') {
+    number += getNextChar()
+    ch = peekNextChar()
+    if (ch === '+' || ch === '-' || isDecimalDigit(ch)) {
+      number += getNextChar()
+      while (true) {
+        ch = peekNextChar()
+        if (!isDecimalDigit(ch)) {
+          break
+        }
+        number += getNextChar()
+      }
+    } else {
+      throw new SyntaxError('Unexpected character after the exponent sign')
+    }
+  }
+  return createToken('Number', number);
 }
 
-const clear = () => {
-  expression.value = ''
-  currentInput.value = ''
-  subtotal.value = null
+const next = () => {
+    let token: {type: string, value: string}
+ 
+    skipSpaces();
+    if (index.value >= length.value) {
+        return undefined;
+    }
+ 
+    token = scanNumber();
+    if (typeof token !== 'undefined') {
+        return token;
+    }
+ 
+    token = scanOperator();
+    if (typeof token !== 'undefined') {
+        return token;
+    }
+ 
+    token = scanIdentifier();
+    if (typeof token !== 'undefined') {
+        return token;
+    }
+ 
+    throw new SyntaxError('Unknown token from character ' + peekNextChar());
 }
 </script>
 
-<style scoped>
+<!-- <style scoped>
 .calculator {
   max-width: 470px;
   width: 100%;
@@ -372,4 +368,4 @@ img {
   font-weight: 600;
   font-size: 1.8rem;
 }
-</style>
+</style> -->
