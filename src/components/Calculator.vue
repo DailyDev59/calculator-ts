@@ -1,100 +1,53 @@
-<!-- <template>
+<template>
   <div class="calculator">
-    <button class="history">
-      <img src="./../assets/img/icons8-history-48.png" alt="" />
-    </button>
     <div class="display">
-      <p class="calc">{{ expression }}{{ currentInput }}</p>
-      <p
-        v-if="expression.includes('%') || (expression && currentInput)"
-        class="result"
-      >
-        {{ formattedSubtotal }}
-      </p>
-    </div>
-    <div class="keyboard-up">
-      <button class="brown">Backspace</button>
-      <button class="brown">CE</button>
-      <button @click="clear" class="brown">C</button>
-    </div>
-    <div class="keyboard">
-      <button class="gray ms">( )</button>
-      <button class="gray ms">ms</button>
-      <button class="gray ms">m&ndash;</button>
-      <button class="gray">
-        <img src="./../assets/img/m+.svg" alt="m+" />
-      </button>
-      <button class="brown">
-        <img src="./../assets/img/plus-minus.svg" alt="plus-minus" />
-      </button>
-      <button @click="handleOperator('%')" class="brown">
-        <img
-          id="percentage"
-          src="./../assets/img/icons8-percentage-100.png"
-          alt="percentage"
-        />
-      </button>
-      <button @click="handleOperator('÷')" class="brown">
-        <img src="./../assets/img/divide.svg" alt="divide" />
-      </button>
-      <button @click="handleOperator('x')" class="brown">
-        <img src="./../assets/img/multiply.svg" alt="multiply" />
-      </button>
-      <button @click="enterNum('7')" class="black">
-        <img src="./../assets/img/seven.svg" alt="seven" />
-      </button>
-      <button @click="enterNum('8')" class="black">
-        <img src="./../assets/img/eight.svg" alt="eight" />
-      </button>
-      <button @click="enterNum('9')" class="black">
-        <img src="./../assets/img/nine.svg" alt="nine" />
-      </button>
-      <button @click="handleOperator('-')" class="brown">
-        <img src="./../assets/img/minus.svg" alt="minus" />
-      </button>
-      <button @click="enterNum('4')" class="black">
-        <img src="./../assets/img/four.svg" alt="four" />
-      </button>
-      <button @click="enterNum('5')" class="black">
-        <img src="./../assets/img/five.svg" alt="five" />
-      </button>
-      <button @click="enterNum('6')" class="black">
-        <img src="./../assets/img/six.svg" alt="six" />
-      </button>
-      <button @click="handleOperator('+')" class="brown">
-        <img src="./../assets/img/plus.svg" alt="plus" />
-      </button>
-      <button @click="enterNum('1')" class="black">
-        <img src="./../assets/img/one.svg" alt="one" />
-      </button>
-      <button @click="enterNum('2')" class="black">
-        <img src="./../assets/img/two.svg" alt="two" />
-      </button>
-      <button @click="enterNum('3')" class="black">
-        <img src="./../assets/img/three.svg" alt="three" />
-      </button>
-      <button @click="handleEqual" class="orange">
-        <img src="./../assets/img/equal.svg" alt="equal" />
-      </button>
-      <button @click="enterNum('0')" class="black box0">
-        <img src="./../assets/img/zero.svg" alt="zero" />
-      </button>
-      <button @click="enterNum(',')" class="black">
-        <img src="./../assets/img/comma.svg" alt="comma" />
-      </button>
+      <input
+        type="text"
+        v-model="expression"
+        placeholder="Enter an expression, jackass..."
+      />
+      <p class="calc">Current Expression: {{ expression }}</p>
+      <p class="result">Tokens:</p>
+      <ul>
+        <li v-for="(token, index) in tokens" :key="index">
+          {{ token.type }}: {{ token.value }}
+        </li>
+      </ul>
+      <p v-if="error" class="error">Error: {{ error }}</p>
     </div>
   </div>
-</template> -->
+</template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+
+// Define a type for the token
+type Token = {
+  type: string
+  value: string
+}
 
 const expression = ref('')
-let index = ref(0)
-const length = computed(() => expression.value.length)
+const tokens = ref<Token[]>([]) // Reactive array to store all tokens
+const error = ref<string | undefined>(undefined)
+
+// Watch for changes in the expression and tokenize it automatically
+watch(expression, (newExpression) => {
+  try {
+    error.value = undefined // Clear any previous errors
+    tokens.value = tokenizeExpression(newExpression) // Tokenize the new expression
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      error.value = 'Illegal format used' // Display the error message
+    } else {
+      error.value = 'An unexpected error occurred'
+    }
+    tokens.value = [] // Clear tokens if there's an error
+  }
+})
 
 const isWhiteSpace = (ch: string) => {
-  return ch === 'u0009' || ch === ' ' || ch === 'u00A0'
+  return ch === '\t' || ch === ' ' || ch === '\u00A0'
 }
 
 const isLetter = (ch: string) => {
@@ -105,267 +58,215 @@ const isDecimalDigit = (ch: string) => {
   return ch >= '0' && ch <= '9'
 }
 
-const createToken = (type: string, value: string) => {
+const createToken = (type: string, value: string): Token => {
   return {
     type: type,
     value: value,
   }
 }
 
-const getNextChar = () => {
-  let ch = '\x00',
-    idx = index
-  if (idx < length) {
-    ch = expression.value.charAt(idx.value)
-    index.value += 1
-  }
-  return ch
-}
+const tokenizeExpression = (input: string): Token[] => {
+  const tokens: Token[] = []
+  let index = 0
 
-function peekNextChar() {
-  var idx = index
-  return idx < length ? expression.value.charAt(idx.value) : '\x00'
-}
-
-const skipSpaces = () => {
-  let ch: string
-
-  while (index < length) {
-    ch = peekNextChar()
-    if (!isWhiteSpace(ch)) {
-      break
+  const getCurrentChar = () => {
+    let ch = ''
+    if (index < input.length) {
+      ch = input.charAt(index)
+      index += 1
     }
-    getNextChar()
+    return ch
   }
-}
 
-const scanOperator = () => {
-  let ch = peekNextChar()
-  if ('+-*/()='.indexOf(ch) >= 0) {
-    return createToken('Operator', getNextChar())
+  const peekCurrentChar = () => {
+    return index < input.length ? input.charAt(index) : ''
   }
-  return undefined
-}
 
-const isIdentifierStart = (ch: string) => {
-  return ch === '_' || isLetter(ch)
-}
+  const skipSpaces = () => {
+    let ch: string
 
-const isIdentifierPart = (ch: string) => {
-  return isIdentifierStart(ch) || isDecimalDigit(ch)
-}
+    while (index < input.length) {
+      ch = peekCurrentChar()
+      if (!isWhiteSpace(ch)) {
+        break
+      }
+      getCurrentChar()
+    }
+  }
 
-const scanIdentifier = () => {
-  let ch: string, id: string
-
-  ch = peekNextChar()
-  if (!isIdentifierStart(ch)) {
+  const scanOperator = (): Token | undefined => {
+    let ch = peekCurrentChar()
+    if ('+-x÷%()='.indexOf(ch) >= 0) {
+      return createToken('Operator', getCurrentChar())
+    }
     return undefined
   }
 
-  id = getNextChar()
-  while (true) {
-    ch = peekNextChar()
-    if (!isIdentifierPart(ch)) {
-      break
+  const isIdentifierStart = (ch: string) => {
+    return ch === '_' || isLetter(ch)
+  }
+
+  const isIdentifierPart = (ch: string) => {
+    return isIdentifierStart(ch) || isDecimalDigit(ch)
+  }
+
+  const scanIdentifier = (): Token | undefined => {
+    let ch: string, id: string
+
+    ch = peekCurrentChar()
+    if (!isIdentifierStart(ch)) {
+      return undefined
     }
-    id += getNextChar()
-  }
 
-  return createToken('Identifier', id)
-}
-
-const scanNumber = () => {
-  // return a token representing a number
-  // or undefined if no number is recognized
-  let ch: string
-
-  ch = peekNextChar()
-  if (!isDecimalDigit(ch) && ch !== '.') {
-    return undefined
-  }
-
-  let number: string
-
-  number = ''
-  if (ch !== '.') {
-    number = getNextChar()
+    id = getCurrentChar()
     while (true) {
-      ch = peekNextChar()
-      if (!isDecimalDigit(ch)) {
+      ch = peekCurrentChar()
+      if (!isIdentifierPart(ch)) {
         break
       }
-      number += getNextChar()
+      id += getCurrentChar()
     }
+
+    return createToken('Identifier', id)
   }
 
-  if (ch === '.') {
-    number += getNextChar()
-    while (true) {
-      ch = peekNextChar()
-      if (!isDecimalDigit(ch)) {
-        break
-      }
-      number += getNextChar()
-    }
-  }
+  const scanNumber = (): Token | undefined => {
+    let ch: string
+    let number: string
+    let isPercent = false
 
-  if (ch === 'e' || ch === 'E') {
-    number += getNextChar()
-    ch = peekNextChar()
-    if (ch === '+' || ch === '-' || isDecimalDigit(ch)) {
-      number += getNextChar()
+    ch = peekCurrentChar()
+    if (!isDecimalDigit(ch) && ch !== '.') {
+      return undefined
+    }
+
+    number = ''
+    if (ch !== '.') {
+      number = getCurrentChar()
       while (true) {
-        ch = peekNextChar()
+        ch = peekCurrentChar()
         if (!isDecimalDigit(ch)) {
           break
         }
-        number += getNextChar()
+        number += getCurrentChar()
       }
-    } else {
-      throw new SyntaxError('Unexpected character after the exponent sign')
+    }
+
+    if (ch === '.') {
+      number += getCurrentChar()
+      while (true) {
+        ch = peekCurrentChar()
+        if (!isDecimalDigit(ch)) {
+          break
+        }
+        number += getCurrentChar()
+      }
+    }
+
+    if (ch === 'e' || ch === 'E') {
+      number += getCurrentChar()
+      ch = peekCurrentChar()
+      if (ch === '+' || ch === '-' || isDecimalDigit(ch)) {
+        number += getCurrentChar()
+        while (true) {
+          ch = peekCurrentChar()
+          if (!isDecimalDigit(ch)) {
+            break
+          }
+          number += getCurrentChar()
+        }
+      } else {
+        throw new SyntaxError('Unexpected character after the exponent sign')
+      }
+    }
+
+    ch = peekCurrentChar()
+    if (ch === '%') {
+      isPercent = true
+      number += getCurrentChar()
+    }
+
+    return createToken(isPercent ? 'PercentNumber' : 'Number', number)
+  }
+
+  const scanTokens = (): Token | undefined => {
+    let token: Token | undefined
+
+    skipSpaces()
+    if (peekCurrentChar() === '') {
+      return undefined
+    }
+
+    token = scanNumber()
+    if (token !== undefined) {
+      return token
+    }
+
+    token = scanOperator()
+    if (token !== undefined) {
+      return token
+    }
+
+    token = scanIdentifier()
+    if (token !== undefined) {
+      return token
+    }
+
+    // If no valid token is found, throw an error with the problematic character
+    const problematicChar = peekCurrentChar()
+    throw new SyntaxError(`Unknown token from character: ${problematicChar}`)
+  }
+
+  // Tokenize the entire input
+  while (index < input.length) {
+    const token = scanTokens()
+    if (token) {
+      tokens.push(token)
     }
   }
-  return createToken('Number', number);
-}
 
-const next = () => {
-    let token: {type: string, value: string}
- 
-    skipSpaces();
-    if (index.value >= length.value) {
-        return undefined;
-    }
- 
-    token = scanNumber();
-    if (typeof token !== 'undefined') {
-        return token;
-    }
- 
-    token = scanOperator();
-    if (typeof token !== 'undefined') {
-        return token;
-    }
- 
-    token = scanIdentifier();
-    if (typeof token !== 'undefined') {
-        return token;
-    }
- 
-    throw new SyntaxError('Unknown token from character ' + peekNextChar());
+  return tokens
 }
 </script>
 
-<!-- <style scoped>
+<style scoped>
 .calculator {
-  max-width: 470px;
-  width: 100%;
-  height: 875px;
-  background-color: #090909;
-  color: white;
+  font-family: Arial, sans-serif;
+  max-width: 400px;
   margin: 0 auto;
-  border-radius: 70px;
-  padding-top: 1.5em;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
 }
-.history {
-  border: 0;
-  background-color: #090909;
-  cursor: pointer;
-  margin: 0 0 20px 50px;
-}
+
 .display {
-  margin: 0 auto;
-  max-width: 429px;
+  margin-bottom: 20px;
+}
+
+input {
   width: 100%;
-  max-height: 118px;
-  height: 100%;
-  background: linear-gradient(
-    to bottom,
-    #e8ead8 0%,
-    #d2d6b7 38%,
-    #dbdec1 61%,
-    #edefe0 100%
-  );
-  color: black;
-  line-height: 1;
-  text-align: right;
+  padding: 10px;
+  font-size: 16px;
+  margin-bottom: 10px;
 }
-.calc {
-  margin: 0;
-  font-size: 3rem;
-  font-weight: bold;
-  padding: 15px;
+
+.calc,
+.result,
+.error {
+  font-size: 18px;
+  margin: 10px 0;
 }
-.result {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #6b31e1;
-  padding-right: 15px;
+
+.error {
+  color: rgb(237, 89, 131);
 }
-.keyboard-up {
-  display: grid;
-  padding: 18px;
-  grid-template-columns: repeat(3, 1fr);
-  column-gap: 15px;
+
+ul {
+  list-style-type: none;
+  padding: 0;
 }
-.keyboard-up button {
-  min-height: 57px;
-  font-family: Inter, sans-serif;
-  font-size: 1.6em;
-  font-weight: 700;
-  color: #ffffff;
-  border-radius: 8px;
-  cursor: pointer;
+
+li {
+  margin: 5px 0;
 }
-.keyboard {
-  margin: 0 auto;
-  padding: 18px;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(60px, 1fr));
-  column-gap: 14px;
-  max-width: 429px;
-  row-gap: 26px;
-}
-.keyboard button {
-  border-radius: 8px;
-  cursor: pointer;
-}
-img {
-  display: block;
-  margin-left: -4px;
-  margin-top: -1px;
-}
-.box0 {
-  grid-column: span 2;
-}
-.gray {
-  background: linear-gradient(to bottom, #8e9294 30%, #2e373b 90%);
-}
-.brown {
-  background: linear-gradient(to bottom, #efb187 30%, #392314 90%);
-}
-.black {
-  background: linear-gradient(to bottom, #6e6e6e 30%, #040404 90%);
-}
-.orange {
-  background: linear-gradient(to bottom, #f69545 30%, #411e01 90%);
-  grid-row: span 2;
-  /* height: 136px; */
-}
-#parenthesis {
-  font-family: Inter, sans-serif;
-  font-size: 1.6em;
-  font-weight: 700;
-  color: #ffffff;
-}
-#percentage {
-  display: inline;
-  width: 44px;
-}
-.ms {
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 1.8rem;
-}
-</style> -->
+</style>
