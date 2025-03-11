@@ -13,6 +13,8 @@
           {{ token.type }}: {{ token.value }}
         </li>
       </ul>
+      <p class="ast">AST: {{ ast }}</p>
+      <p class="result">Result: {{ result }}</p>
       <p v-if="error" class="error">Error: {{ error }}</p>
     </div>
   </div>
@@ -27,15 +29,39 @@ type Token = {
   value: string
 }
 
+//AST
+type NumberNode = {
+  type: 'Number'
+  value: number
+}
+
+type PercentNumberNode = {
+  type: 'PercentNumber'
+  value: number
+}
+
+type BinaryOperatorNode = {
+  type: 'BinaryOperator'
+  operator: string
+  left: ASTNode
+  right: ASTNode
+}
+
+type ASTNode = NumberNode | PercentNumberNode | BinaryOperatorNode
+
 const expression = ref('')
 const tokens = ref<Token[]>([]) // Reactive array to store all tokens
+const ast = ref<ASTNode | null>(null)
 const error = ref<string | undefined>(undefined)
+const result = ref<number | null>(null)
 
 // Watch for changes in the expression and tokenize it automatically
 watch(expression, (newExpression) => {
   try {
     error.value = undefined // Clear any previous errors
     tokens.value = tokenizeExpression(newExpression) // Tokenize the new expression
+    ast.value = parseExpression(tokens.value)
+    result.value = evaluate(ast.value)
   } catch (err) {
     if (err instanceof SyntaxError) {
       error.value = 'Illegal format used' // Display the error message
@@ -96,7 +122,7 @@ const tokenizeExpression = (input: string): Token[] => {
 
   const scanOperator = (): Token | undefined => {
     let ch = peekCurrentChar()
-    if ('+-x÷%()='.indexOf(ch) >= 0) {
+    if ('+-x÷()='.indexOf(ch) >= 0) {
       return createToken('Operator', getCurrentChar())
     }
     return undefined
@@ -227,6 +253,157 @@ const tokenizeExpression = (input: string): Token[] => {
 
   return tokens
 }
+
+const parseExpression = (tokens: Token[]): ASTNode | null => {
+  // Добавим проверку на пустую строку
+  if (tokens.length === 0) {
+    return null
+  }
+
+  let index = 0
+
+  const peek = (): Token | undefined => tokens[index]
+  const consume = (): Token | undefined => tokens[index++]
+
+  const parseNumber = (): ASTNode | undefined => {
+    const token = peek()
+    if (token?.type === 'Number') {
+      consume()
+      return { type: 'Number', value: parseFloat(token.value) }
+    }
+    if (token?.type === 'PercentNumber') {
+      consume()
+      return {
+        type: 'PercentNumber',
+        value: parseFloat(token.value.slice(0, -1)) / 100,
+      }
+    }
+    return undefined
+  }
+
+  const parsePrimary = (): ASTNode | undefined => {
+    const token = peek()
+    if (token?.type === 'Operator' && token.value === '(') {
+      consume() // Съедаем открывающую скобку
+      const expr = parseExpressionInternal() // Рекурсивно разбираем выражение внутри скобок
+      if (peek()?.type !== 'Operator' || peek()?.value !== ')') {
+        return null
+      }
+      consume() // Съедаем закрывающую скобку
+      return expr
+    }
+    return parseNumber()
+  }
+
+  const parseFactor = (): ASTNode | undefined => {
+    return parsePrimary()
+  }
+
+  const parseTerm = (): ASTNode | undefined => {
+    let left = parseFactor()
+    if (!left) return undefined
+
+    while (true) {
+      const token = peek()
+      if (
+        token?.type === 'Operator' &&
+        (token.value === 'x' || token.value === '÷')
+      ) {
+        consume()
+        const right = parseFactor()
+        if (!right) {
+          // Если нет правого операнда, то выражение неполное, возвращаем null
+          return null
+        }
+        left = {
+          type: 'BinaryOperator',
+          operator: token.value === 'x' ? '*' : '/', // Преобразование в стандартные * и /
+          left: left,
+          right: right,
+        }
+      } else {
+        break
+      }
+    }
+    return left
+  }
+
+  const parseExpressionInternal = (): ASTNode | undefined => {
+    let left = parseTerm()
+    if (!left) return undefined
+
+    while (true) {
+      const token = peek()
+      if (
+        token?.type === 'Operator' &&
+        (token.value === '+' || token.value === '-')
+      ) {
+        consume()
+        const right = parseTerm()
+        if (!right) {
+          // Если нет правого операнда, то выражение неполное, возвращаем null
+          return null
+        }
+        left = {
+          type: 'BinaryOperator',
+          operator: token.value,
+          left: left,
+          right: right,
+        }
+      } else {
+        break
+      }
+    }
+    return left
+  }
+
+  const result = parseExpressionInternal()
+  if (result === undefined || index !== tokens.length) {
+    // Если result не определен, или не дошли до конца, то возвращаем null
+    return null
+  }
+
+  return result
+}
+
+const evaluate = (node: ASTNode | null): number | null => {
+  if (node === null) {
+    return null // Обработка пустого дерева
+  }
+
+  switch (node.type) {
+    case 'Number':
+      return node.value // Если это число, возвращаем его значение
+    case 'PercentNumber':
+      return node.value // Если это процентное число, возвращаем его значение
+    case 'BinaryOperator':
+      const left = evaluate(node.left)
+      const right = evaluate(node.right)
+
+      if (left === null || right === null) {
+        return null // Если хотя бы один из операндов не определен, возвращаем null
+      }
+
+      switch (node.operator) {
+        case '+':
+          return left + right
+        case '-':
+          return left - right
+        case '*':
+          return left * right
+        case '/':
+          if (right === 0) {
+            error.value = 'Division by zero'
+            return null
+          }
+          return left / right
+        default:
+          return null // Если оператор неизвестен, возвращаем null
+      }
+    default:
+      return null // Если тип узла неизвестен, возвращаем null
+  }
+}
 </script>
 
 <style scoped>
@@ -238,34 +415,28 @@ const tokenizeExpression = (input: string): Token[] => {
   border: 1px solid #ccc;
   border-radius: 8px;
 }
-
 .display {
   margin-bottom: 20px;
 }
-
 input {
   width: 100%;
   padding: 10px;
   font-size: 16px;
   margin-bottom: 10px;
 }
-
 .calc,
 .result,
 .error {
   font-size: 18px;
   margin: 10px 0;
 }
-
 .error {
   color: rgb(237, 89, 131);
 }
-
 ul {
   list-style-type: none;
   padding: 0;
 }
-
 li {
   margin: 5px 0;
 }
