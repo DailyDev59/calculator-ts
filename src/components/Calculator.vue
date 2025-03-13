@@ -375,18 +375,10 @@ const evaluate = (node: ASTNode | null): number | null => {
     case 'Number':
       return node.value
     case 'PercentNumber':
-      // Проверяем, является ли PercentNumberNode правым операндом в BinaryOperatorNode
-      let isRightOperand = false;
-      if (ast.value && ast.value.type === 'BinaryOperator') {
-        isRightOperand = ast.value.right === node;
-      }
-      if (!isRightOperand) {
-        return node.value / 100; // Делим на 100, если это не правый операнд
-      }
-      return node.value; // Если это правый операнд, не делим на 100
+      return node.value / 100 // Делим на 100, когда встречаем процент
     case 'BinaryOperator':
       const left = evaluate(node.left)
-      let right = evaluate(node.right) // Сначала вычисляем правый операнд
+      let right = evaluate(node.right)
 
       if (left === null || right === null) {
         return null
@@ -394,7 +386,7 @@ const evaluate = (node: ASTNode | null): number | null => {
 
       // Проверяем, является ли правый операнд PercentNumberNode
       if (node.right.type === 'PercentNumber') {
-        right = (left * right) / 100 // Вычисляем процент от левого операнда
+        right = left * right // Вычисляем процент от левого операнда
       }
 
       switch (node.operator) {
@@ -417,8 +409,6 @@ const evaluate = (node: ASTNode | null): number | null => {
       return null
   }
 }
-
-
 </script>
 
 <style scoped>
