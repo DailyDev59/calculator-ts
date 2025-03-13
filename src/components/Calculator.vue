@@ -275,7 +275,7 @@ const parseExpression = (tokens: Token[]): ASTNode | null => {
       consume()
       return {
         type: 'PercentNumber',
-        value: parseFloat(token.value.slice(0, -1)) / 100,
+        value: parseFloat(token.value.slice(0, -1)), // Сохраняем значение без %
       }
     }
     return undefined
@@ -368,20 +368,33 @@ const parseExpression = (tokens: Token[]): ASTNode | null => {
 
 const evaluate = (node: ASTNode | null): number | null => {
   if (node === null) {
-    return null // Обработка пустого дерева
+    return null
   }
 
   switch (node.type) {
     case 'Number':
-      return node.value // Если это число, возвращаем его значение
+      return node.value
     case 'PercentNumber':
-      return node.value // Если это процентное число, возвращаем его значение
+      // Проверяем, является ли PercentNumberNode правым операндом в BinaryOperatorNode
+      let isRightOperand = false;
+      if (ast.value && ast.value.type === 'BinaryOperator') {
+        isRightOperand = ast.value.right === node;
+      }
+      if (!isRightOperand) {
+        return node.value / 100; // Делим на 100, если это не правый операнд
+      }
+      return node.value; // Если это правый операнд, не делим на 100
     case 'BinaryOperator':
       const left = evaluate(node.left)
-      const right = evaluate(node.right)
+      let right = evaluate(node.right) // Сначала вычисляем правый операнд
 
       if (left === null || right === null) {
-        return null // Если хотя бы один из операндов не определен, возвращаем null
+        return null
+      }
+
+      // Проверяем, является ли правый операнд PercentNumberNode
+      if (node.right.type === 'PercentNumber') {
+        right = (left * right) / 100 // Вычисляем процент от левого операнда
       }
 
       switch (node.operator) {
@@ -398,12 +411,14 @@ const evaluate = (node: ASTNode | null): number | null => {
           }
           return left / right
         default:
-          return null // Если оператор неизвестен, возвращаем null
+          return null
       }
     default:
-      return null // Если тип узла неизвестен, возвращаем null
+      return null
   }
 }
+
+
 </script>
 
 <style scoped>
