@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
   <div class="calculator">
     <div class="display">
       <input
@@ -16,6 +16,123 @@
       <p class="ast">AST: {{ ast }}</p>
       <p class="result">Result: {{ result }}</p>
       <p v-if="error" class="error">Error: {{ error }}</p>
+    </div>
+  </div>
+</template> -->
+
+<template>
+  <div class="calculator">
+    <button class="history">
+      <img src="./../assets/img/icons8-history-48.png" alt="" />
+    </button>
+    <div class="display">
+      <p class="calc">
+        {{ currentExpression  || '0' }}
+      </p>
+      <p class="result">{{ result }}</p>
+    </div>
+    <div class="keyboard-up">
+      <button class="brown">Backspace</button>
+      <button class="brown">CE</button>
+      <button @click="clear()" class="brown">C</button>
+    </div>
+    <div class="keyboard">
+      <button class="gray">
+        <img src="./../assets/img/mc.svg" alt="mc" />
+      </button>
+      <button class="gray">
+        <img src="./../assets/img/m+.svg" alt="m+" />
+      </button>
+      <button class="gray ms">ms</button>
+      <button class="gray">
+        <img src="./../assets/img/mr.svg" alt="mr" />
+      </button>
+      <button class="brown">
+        <img src="./../assets/img/plus-minus.svg" alt="plus-minus" />
+      </button>
+      <button @click="percent()" class="brown">
+        <img
+          id="percentage"
+          src="./../assets/img/icons8-percentage-100.png"
+          alt="percentage"
+        />
+      </button>
+      <button
+        @click="
+          operator = '÷',
+          currentExpression += '÷',
+          calculateSubtotal()
+        "
+        class="brown"
+      >
+        <img src="./../assets/img/divide.svg" alt="divide" />
+      </button>
+      <button
+        @click="
+          operator = 'x',
+          currentExpression += 'x',
+          calculateSubtotal()
+        "
+        class="brown"
+      >
+        <img src="./../assets/img/multiply.svg" alt="multiply" />
+      </button>
+      <button @click="pressed('7')" class="black">
+        <img src="./../assets/img/seven.svg" alt="seven" />
+      </button>
+      <button @click="pressed('8')" class="black">
+        <img src="./../assets/img/eight.svg" alt="eight" />
+      </button>
+      <button @click="pressed('9')" class="black">
+        <img src="./../assets/img/nine.svg" alt="nine" />
+      </button>
+      <button
+        @click="
+          operator = '-',
+          currentExpression += '-',
+          calculateSubtotal()
+        "
+        class="brown"
+      >
+        <img src="./../assets/img/minus.svg" alt="minus" />
+      </button>
+      <button @click="pressed('4')" class="black">
+        <img src="./../assets/img/four.svg" alt="four" />
+      </button>
+      <button @click="pressed('5')" class="black">
+        <img src="./../assets/img/five.svg" alt="five" />
+      </button>
+      <button @click="pressed('6')" class="black">
+        <img src="./../assets/img/six.svg" alt="six" />
+      </button>
+      <button
+        @click="
+          operator = '+',
+          currentExpression += '+',
+          calculateSubtotal()
+        "
+        class="brown"
+      >
+        <img src="./../assets/img/plus.svg" alt="plus" />
+      </button>
+      <button @click="pressed('1')" class="black">
+        <img src="./../assets/img/one.svg" alt="one" />
+      </button>
+      <button @click="pressed('2')" class="black">
+        <img src="./../assets/img/two.svg" alt="two" />
+      </button>
+      <button @click="pressed('3')" class="black">
+        <img src="./../assets/img/three.svg" alt="three" />
+      </button>
+      <button @click="calculate()" class="orange">
+        <img src="./../assets/img/equal.svg" alt="equal" />
+      </button>
+      <button @click="pressed('0')" class="black box0">
+        <img src="./../assets/img/zero.svg" alt="zero" />
+      </button>
+      <button @click="pressed(',')" class="black">
+        <img src="./../assets/img/comma.svg" alt="comma" />
+      </button>
     </div>
   </div>
 </template>
@@ -49,11 +166,86 @@ type BinaryOperatorNode = {
 
 type ASTNode = NumberNode | PercentNumberNode | BinaryOperatorNode
 
-const expression = ref('')
-const tokens = ref<Token[]>([]) // Reactive array to store all tokens
-const ast = ref<ASTNode | null>(null)
-const error = ref<string | undefined>(undefined)
+const firstOperand = ref<string | null>(null)
+const secondOperand = ref<string | null>(null)
+const operator = ref<string | null>(null)
 const result = ref<number | null>(null)
+const error = ref<string | undefined>(undefined)
+const ast = ref<ASTNode | null>(null)
+const tokens = ref<Token[]>([]) // Reactive array to store all tokens
+const expression = ref('')
+const currentExpression = ref<string>('')
+
+// Buttons compartment
+
+const pressed = (value: string) => {
+  currentExpression.value += value
+  calculateSubtotal()
+}
+
+const calculate = () => {
+  if (currentExpression.value.length > 0) {
+    try {
+      error.value = undefined
+      tokens.value = tokenizeExpression(currentExpression.value)
+      ast.value = parseExpression(tokens.value)
+      result.value = evaluate(ast.value)
+      firstOperand.value = result.value.toString()
+      currentExpression.value = firstOperand.value
+      secondOperand.value = null
+      operator.value = null
+      result.value = null
+    } catch (err) {
+      if (err instanceof SyntaxError) {
+        error.value = 'Illegal format used'
+        result.value = null
+      } else {
+        error.value = 'An unexpected error occurred'
+        result.value = null
+      }
+    }
+  }
+}
+
+const clear = () => {
+  firstOperand.value = null
+  secondOperand.value = null
+  operator.value = null
+  result.value = null
+  error.value = undefined
+  ast.value = null
+  tokens.value = []
+  currentExpression.value = '';
+}
+
+
+const percent = () => {
+  currentExpression.value += '%'
+  calculateSubtotal()
+}
+
+const calculateSubtotal = () => {
+  if (currentExpression.value.length > 0) {
+    try {
+      error.value = undefined
+      tokens.value = tokenizeExpression(currentExpression.value)
+      ast.value = parseExpression(tokens.value)
+      result.value = evaluate(ast.value)
+    } catch (err) {
+      if (err instanceof SyntaxError) {
+        error.value = 'Illegal format used'
+        result.value = null
+      } else {
+        error.value = 'An unexpected error occurred'
+        result.value = null
+      }
+    }
+  } else {
+    result.value = null
+  }
+}
+
+// Tokenizer and evaluator compartment
 
 // Watch for changes in the expression and tokenize it automatically
 watch(expression, (newExpression) => {
@@ -413,6 +605,119 @@ const evaluate = (node: ASTNode | null): number | null => {
 
 <style scoped>
 .calculator {
+  max-width: 470px;
+  width: 100%;
+  height: 875px;
+  background-color: #090909;
+  color: white;
+  margin: 0 auto;
+  border-radius: 70px;
+  padding-top: 1.5em;
+}
+.history {
+  border: 0;
+  background-color: #090909;
+  cursor: pointer;
+  margin: 0 0 20px 50px;
+}
+.display {
+  margin: 0 auto;
+  max-width: 429px;
+  width: 100%;
+  max-height: 118px;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    #e8ead8 0%,
+    #d2d6b7 38%,
+    #dbdec1 61%,
+    #edefe0 100%
+  );
+  color: black;
+  line-height: 1;
+  text-align: right;
+}
+.calc {
+  margin: 0;
+  font-size: 3rem;
+  font-weight: bold;
+  padding: 15px;
+}
+.result {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: bold;
+  padding-right: 15px;
+}
+.keyboard-up {
+  display: grid;
+  padding: 18px;
+  grid-template-columns: repeat(3, 1fr);
+  column-gap: 15px;
+}
+.keyboard-up button {
+  min-height: 57px;
+  font-family: Inter, sans-serif;
+  font-size: 1.6em;
+  font-weight: 700;
+  color: #ffffff;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.keyboard {
+  margin: 0 auto;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(60px, 1fr));
+  column-gap: 14px;
+  max-width: 429px;
+  row-gap: 26px;
+}
+.keyboard button {
+  border-radius: 8px;
+  cursor: pointer;
+}
+img {
+  display: block;
+  margin-left: -4px;
+  margin-top: -1px;
+}
+.box0 {
+  grid-column: span 2;
+}
+.gray {
+  background: linear-gradient(to bottom, #8e9294 30%, #2e373b 90%);
+}
+.brown {
+  background: linear-gradient(to bottom, #efb187 30%, #392314 90%);
+}
+.black {
+  background: linear-gradient(to bottom, #6e6e6e 30%, #040404 90%);
+}
+.orange {
+  background: linear-gradient(to bottom, #f69545 30%, #411e01 90%);
+  grid-row: span 2;
+  /* height: 136px; */
+}
+#parenthesis {
+  font-family: Inter, sans-serif;
+  font-size: 1.6em;
+  font-weight: 700;
+  color: #ffffff;
+}
+#percentage {
+  display: inline;
+  width: 44px;
+}
+.ms {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 1.6rem;
+}
+</style>
+
+<!-- <style scoped>
+.calculator {
   font-family: Arial, sans-serif;
   max-width: 400px;
   margin: 0 auto;
@@ -445,4 +750,4 @@ ul {
 li {
   margin: 5px 0;
 }
-</style>
+</style> -->
