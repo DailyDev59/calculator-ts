@@ -26,19 +26,23 @@
       <img src="./../assets/img/icons8-history-48.png" alt="" />
     </button>
     <div class="display">
-      <p class="calc">
-        {{ currentExpression  || '0' }}
+      <p class="calc" :class="{ activeResult: isResultCalculated }">
+        {{ currentExpression }}
       </p>
-      <p class="result">{{ result }}</p>
+      <p v-if="tokens.length > 2" class="result">{{ formattedResult }}</p>
     </div>
     <div class="keyboard-up">
-      <button class="brown">Backspace</button>
-      <button class="brown">CE</button>
+      <button @click="backSpace()" class="brown">Backspace</button>
+      <button @click="clearEntry()" class="brown">CE</button>
       <button @click="clear()" class="brown">C</button>
     </div>
     <div class="keyboard">
-      <button class="gray">
-        <img src="./../assets/img/mc.svg" alt="mc" />
+      <button
+        @click="pressed('()')"
+        class="brown"
+        :class="{ highlightParenthesis: isClosingParenthesisNeeded }"
+      >
+        (&nbsp;&nbsp;)
       </button>
       <button class="gray">
         <img src="./../assets/img/m+.svg" alt="m+" />
@@ -47,7 +51,7 @@
       <button class="gray">
         <img src="./../assets/img/mr.svg" alt="mr" />
       </button>
-      <button class="brown">
+      <button @click="" class="brown">
         <img src="./../assets/img/plus-minus.svg" alt="plus-minus" />
       </button>
       <button @click="percent()" class="brown">
@@ -59,9 +63,7 @@
       </button>
       <button
         @click="
-          operator = '÷',
-          currentExpression += '÷',
-          calculateSubtotal()
+          ;(operator = '÷'), (currentExpression += '÷'), calculateSubtotal()
         "
         class="brown"
       >
@@ -69,9 +71,7 @@
       </button>
       <button
         @click="
-          operator = 'x',
-          currentExpression += 'x',
-          calculateSubtotal()
+          ;(operator = 'x'), (currentExpression += 'x'), calculateSubtotal()
         "
         class="brown"
       >
@@ -88,9 +88,7 @@
       </button>
       <button
         @click="
-          operator = '-',
-          currentExpression += '-',
-          calculateSubtotal()
+          ;(operator = '-'), (currentExpression += '-'), calculateSubtotal()
         "
         class="brown"
       >
@@ -107,9 +105,7 @@
       </button>
       <button
         @click="
-          operator = '+',
-          currentExpression += '+',
-          calculateSubtotal()
+          ;(operator = '+'), (currentExpression += '+'), calculateSubtotal()
         "
         class="brown"
       >
@@ -175,29 +171,69 @@ const ast = ref<ASTNode | null>(null)
 const tokens = ref<Token[]>([]) // Reactive array to store all tokens
 const expression = ref('')
 const currentExpression = ref<string>('')
-
+const isResultCalculated = ref(false)
+const isClosingParenthesisNeeded = ref(false)
 // Buttons compartment
 
 const pressed = (value: string) => {
-  currentExpression.value += value
+  if (value === '()') {
+    handleParenthesis()
+  } else {
+    currentExpression.value += value
+  }
   calculateSubtotal()
+}
+
+const handleParenthesis = () => {
+  const openCount = (currentExpression.value.match(/\(/g) || []).length
+  const closeCount = (currentExpression.value.match(/\)/g) || []).length
+
+  if (
+    openCount === closeCount ||
+    currentExpression.value.length === 0 ||
+    /[+\-x÷(]/.test(currentExpression.value.slice(-1))
+  ) {
+    currentExpression.value += '('
+    isClosingParenthesisNeeded.value = true // Подсвечиваем кнопку, когда ввели открывающую
+  } else {
+    currentExpression.value += ')'
+    isClosingParenthesisNeeded.value = false // Убираем подсветку, когда ввели закрывающую
+  }
 }
 
 const calculate = () => {
   if (currentExpression.value.length > 0) {
     try {
+      // Проверка на недопустимые символы
+      if (/[^0-9+\-x÷().,%]/.test(currentExpression.value)) {
+        throw new SyntaxError('Illegal format used')
+      }
+
+      // Проверка на несбалансированные скобки
+      const openCount = (currentExpression.value.match(/\(/g) || []).length
+      const closeCount = (currentExpression.value.match(/\)/g) || []).length
+      if (openCount !== closeCount) {
+        throw new SyntaxError('Unbalanced parentheses')
+      }
+
+      // Проверка на недопустимое расположение скобок
+      if (/\)\(/.test(currentExpression.value)) {
+        throw new SyntaxError('Invalid parentheses placement')
+      }
+
       error.value = undefined
       tokens.value = tokenizeExpression(currentExpression.value)
       ast.value = parseExpression(tokens.value)
       result.value = evaluate(ast.value)
-      firstOperand.value = result.value.toString()
-      currentExpression.value = firstOperand.value
+      firstOperand.value = formattedResult.value
+      currentExpression.value = formattedResult.value
       secondOperand.value = null
       operator.value = null
       result.value = null
+      isResultCalculated.value = true
     } catch (err) {
       if (err instanceof SyntaxError) {
-        error.value = 'Illegal format used'
+        error.value = err.message // Используем сообщение об ошибке из SyntaxError
         result.value = null
       } else {
         error.value = 'An unexpected error occurred'
@@ -215,7 +251,37 @@ const clear = () => {
   error.value = undefined
   ast.value = null
   tokens.value = []
-  currentExpression.value = '';
+  currentExpression.value = ''
+  isResultCalculated.value = false
+}
+
+const clearEntry = () => {
+  if (currentExpression.value.length > 0) {
+    // Получаем токены из текущего выражения
+    const currentTokens = tokenizeExpression(currentExpression.value)
+
+    if (currentTokens.length > 0) {
+      // Удаляем последний токен
+      currentTokens.pop()
+
+      // Собираем новое выражение из оставшихся токенов
+      currentExpression.value = currentTokens
+        .map((token) => token.value)
+        .join('')
+
+      calculateSubtotal() // Пересчитываем промежуточный результат
+    } else {
+      currentExpression.value = ''
+    }
+  }
+}
+
+const backSpace = () => {
+  if (currentExpression.value.length > 0) {
+    // Удаляем последний символ
+    currentExpression.value = currentExpression.value.slice(0, -1)
+    calculateSubtotal() // Пересчитываем промежуточный результат
+  }
 }
 
 
@@ -352,14 +418,17 @@ const tokenizeExpression = (input: string): Token[] => {
     let ch: string
     let number: string
     let isPercent = false
+    let isNegative = false // Добавляем флаг для отрицательных чисел
 
     ch = peekCurrentChar()
-    if (!isDecimalDigit(ch) && ch !== '.') {
+    if (!isDecimalDigit(ch) && ch !== '.' && ch !== ',') {
+      // Добавили проверку на запятую
       return undefined
     }
 
     number = ''
-    if (ch !== '.') {
+    if (ch !== '.' && ch !== ',') {
+      // Добавили проверку на запятую
       number = getCurrentChar()
       while (true) {
         ch = peekCurrentChar()
@@ -370,8 +439,10 @@ const tokenizeExpression = (input: string): Token[] => {
       }
     }
 
-    if (ch === '.') {
-      number += getCurrentChar()
+    if (ch === '.' || ch === ',') {
+      // Добавили проверку на запятую
+      number += '.' // Заменяем запятую на точку
+      getCurrentChar() // Пропускаем запятую или точку
       while (true) {
         ch = peekCurrentChar()
         if (!isDecimalDigit(ch)) {
@@ -567,7 +638,7 @@ const evaluate = (node: ASTNode | null): number | null => {
     case 'Number':
       return node.value
     case 'PercentNumber':
-      return node.value / 100 // Делим на 100, когда встречаем процент
+      return node.value / 100
     case 'BinaryOperator':
       const left = evaluate(node.left)
       let right = evaluate(node.right)
@@ -576,31 +647,43 @@ const evaluate = (node: ASTNode | null): number | null => {
         return null
       }
 
-      // Проверяем, является ли правый операнд PercentNumberNode
       if (node.right.type === 'PercentNumber') {
-        right = left * right // Вычисляем процент от левого операнда
+        right = left * right
       }
 
+      let result: number
       switch (node.operator) {
         case '+':
-          return left + right
+          result = left + right
+          break
         case '-':
-          return left - right
+          result = left - right
+          break
         case '*':
-          return left * right
+          result = left * right
+          break
         case '/':
           if (right === 0) {
             error.value = 'Division by zero'
             return null
           }
-          return left / right
+          result = left / right
+          break
         default:
           return null
       }
+      return Number(result.toFixed(10)) // Округляем и преобразуем в число
     default:
       return null
   }
 }
+
+const formattedResult = computed(() => {
+  if (result.value === null) {
+    return '' // Или '0', если нужно отображать 0 вместо пустой строки
+  }
+  return result.value.toLocaleString('ru-RU', { maximumFractionDigits: 10 })
+})
 </script>
 
 <style scoped>
@@ -647,7 +730,11 @@ const evaluate = (node: ASTNode | null): number | null => {
   margin: 0;
   font-size: 1.5rem;
   font-weight: bold;
+  color: #6b31e1;
   padding-right: 15px;
+}
+.activeResult {
+  color: #348806;
 }
 .keyboard-up {
   display: grid;
@@ -690,6 +777,10 @@ img {
 }
 .brown {
   background: linear-gradient(to bottom, #efb187 30%, #392314 90%);
+  font-family: Inter, sans-serif;
+  font-size: 1.6em;
+  font-weight: 700;
+  color: #ffffff;
 }
 .black {
   background: linear-gradient(to bottom, #6e6e6e 30%, #040404 90%);
@@ -697,13 +788,6 @@ img {
 .orange {
   background: linear-gradient(to bottom, #f69545 30%, #411e01 90%);
   grid-row: span 2;
-  /* height: 136px; */
-}
-#parenthesis {
-  font-family: Inter, sans-serif;
-  font-size: 1.6em;
-  font-weight: 700;
-  color: #ffffff;
 }
 #percentage {
   display: inline;
@@ -713,6 +797,10 @@ img {
   color: #ffffff;
   font-weight: 600;
   font-size: 1.6rem;
+}
+.highlightParenthesis {
+  box-shadow: 0 0 30px white; /* Пример подсветки */
+  transition: box-shadow 0.2s ease;
 }
 </style>
 
