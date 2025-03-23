@@ -1,4 +1,4 @@
-<!-- <template>
+<template>
   <div class="calculator">
     <div class="display">
       <input
@@ -18,9 +18,9 @@
       <p v-if="error" class="error">Error: {{ error }}</p>
     </div>
   </div>
-</template> -->
+</template>
 
-<template>
+<!-- <template>
   <div class="calculator">
     <button class="history">
       <img src="./../assets/img/icons8-history-48.png" alt="" />
@@ -131,7 +131,7 @@
       </button>
     </div>
   </div>
-</template>
+</template> -->
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
@@ -284,7 +284,6 @@ const backSpace = () => {
   }
 }
 
-
 const percent = () => {
   currentExpression.value += '%'
   calculateSubtotal()
@@ -380,8 +379,19 @@ const tokenizeExpression = (input: string): Token[] => {
 
   const scanOperator = (): Token | undefined => {
     let ch = peekCurrentChar()
-    if ('+-x÷()='.indexOf(ch) >= 0) {
+    if ('+x÷()='.indexOf(ch) >= 0) {
       return createToken('Operator', getCurrentChar())
+    }
+    // Проверяем, является ли '-' унарным минусом
+    if (ch === '-') {
+      // Проверяем, находится ли '-' в начале строки или после '('
+      if (index === 0 || input.charAt(index - 1) === '(') {
+        // Это унарный минус, не создаем токен оператора
+        return undefined
+      } else {
+        // Это бинарный минус, создаем токен оператора
+        return createToken('Operator', getCurrentChar())
+      }
     }
     return undefined
   }
@@ -420,16 +430,31 @@ const tokenizeExpression = (input: string): Token[] => {
     let isPercent = false
     let isNegative = false // Добавляем флаг для отрицательных чисел
 
+    // Check for negative sign at the beginning of a number or after an opening parenthesis
+    if (peekCurrentChar() === '-') {
+      const prevChar = index > 0 ? input.charAt(index - 1) : ''
+      const nextChar = input.charAt(index + 1)
+      if (index === 0 || prevChar === '(') {
+        if (isDecimalDigit(nextChar) || nextChar === '.' || nextChar === ',') {
+          isNegative = true
+          getCurrentChar() // Consume the '-'
+        }
+      }
+    }
+
     ch = peekCurrentChar()
     if (!isDecimalDigit(ch) && ch !== '.' && ch !== ',') {
       // Добавили проверку на запятую
-      return undefined
+      if (!isNegative) return undefined
     }
 
     number = ''
+    if (isNegative) {
+      number += '-'
+    }
     if (ch !== '.' && ch !== ',') {
       // Добавили проверку на запятую
-      number = getCurrentChar()
+      number += getCurrentChar()
       while (true) {
         ch = peekCurrentChar()
         if (!isDecimalDigit(ch)) {
@@ -686,7 +711,7 @@ const formattedResult = computed(() => {
 })
 </script>
 
-<style scoped>
+<!-- <style scoped>
 .calculator {
   max-width: 470px;
   width: 100%;
@@ -802,9 +827,9 @@ img {
   box-shadow: 0 0 30px white; /* Пример подсветки */
   transition: box-shadow 0.2s ease;
 }
-</style>
+</style> -->
 
-<!-- <style scoped>
+<style scoped>
 .calculator {
   font-family: Arial, sans-serif;
   max-width: 400px;
@@ -838,4 +863,4 @@ ul {
 li {
   margin: 5px 0;
 }
-</style> -->
+</style>
