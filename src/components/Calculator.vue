@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
   <div class="calculator">
     <div class="display">
       <input
@@ -18,9 +18,9 @@
       <p v-if="error" class="error">Error: {{ error }}</p>
     </div>
   </div>
-</template>
+</template> -->
 
-<!-- <template>
+<template>
   <div class="calculator">
     <button class="history">
       <img src="./../assets/img/icons8-history-48.png" alt="" />
@@ -29,7 +29,7 @@
       <p class="calc" :class="{ activeResult: isResultCalculated }">
         {{ currentExpression }}
       </p>
-      <p v-if="tokens.length > 2" class="result">{{ formattedResult }}</p>
+      <p v-if="/[+\-x÷%]/.test(currentExpression)" class="result">{{ formattedResult }}</p>
     </div>
     <div class="keyboard-up">
       <button @click="backSpace()" class="brown">Backspace</button>
@@ -51,7 +51,7 @@
       <button class="gray">
         <img src="./../assets/img/mr.svg" alt="mr" />
       </button>
-      <button @click="" class="brown">
+      <button @click="negate()" class="brown">
         <img src="./../assets/img/plus-minus.svg" alt="plus-minus" />
       </button>
       <button @click="percent()" class="brown">
@@ -131,7 +131,7 @@
       </button>
     </div>
   </div>
-</template> -->
+</template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
@@ -286,6 +286,11 @@ const backSpace = () => {
 
 const percent = () => {
   currentExpression.value += '%'
+  calculateSubtotal()
+}
+
+const negate = () => {
+  currentExpression.value += '(-'
   calculateSubtotal()
 }
 
@@ -711,7 +716,7 @@ const formattedResult = computed(() => {
 })
 </script>
 
-<!-- <style scoped>
+<style scoped>
 .calculator {
   max-width: 470px;
   width: 100%;
@@ -747,7 +752,7 @@ const formattedResult = computed(() => {
 }
 .calc {
   margin: 0;
-  font-size: 3rem;
+  font-size: 1rem;
   font-weight: bold;
   padding: 15px;
 }
@@ -827,9 +832,9 @@ img {
   box-shadow: 0 0 30px white; /* Пример подсветки */
   transition: box-shadow 0.2s ease;
 }
-</style> -->
+</style>
 
-<style scoped>
+<!-- <style scoped>
 .calculator {
   font-family: Arial, sans-serif;
   max-width: 400px;
@@ -863,4 +868,4 @@ ul {
 li {
   margin: 5px 0;
 }
-</style>
+</style> -->
