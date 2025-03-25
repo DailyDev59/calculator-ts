@@ -29,7 +29,12 @@
       <p class="calc" :class="{ activeResult: isResultCalculated }">
         {{ currentExpression }}
       </p>
-      <p v-if="/[+\-x÷%]/.test(currentExpression)" class="result">{{ formattedResult }}</p>
+      <Transition name="error-slide">
+        <p v-show="error" class="error">{{ error }}</p>
+      </Transition>
+      <p v-if="/[+\-x÷%]/.test(currentExpression)" class="result">
+        {{ formattedResult }}
+      </p>
     </div>
     <div class="keyboard-up">
       <button @click="backSpace()" class="brown">Backspace</button>
@@ -162,6 +167,7 @@ type BinaryOperatorNode = {
 
 type ASTNode = NumberNode | PercentNumberNode | BinaryOperatorNode
 
+// Variables compartment
 const firstOperand = ref<string | null>(null)
 const secondOperand = ref<string | null>(null)
 const operator = ref<string | null>(null)
@@ -173,10 +179,25 @@ const expression = ref('')
 const currentExpression = ref<string>('')
 const isResultCalculated = ref(false)
 const isClosingParenthesisNeeded = ref(false)
+
 // Buttons compartment
 
 const pressed = (value: string) => {
-  if (value === '()') {
+  const lastChar = currentExpression.value.slice(-1)
+
+  if (isDecimalDigit(value) || value === ',') {
+    // Если вводится число или запятая
+    if (lastChar === ')') {
+      currentExpression.value += 'x' // Вставляем x после закрывающей скобки
+    }
+    currentExpression.value += value
+  } else if (value === '(') {
+    // Если вводится открывающая скобка
+    if (isDecimalDigit(lastChar) || lastChar === ')') {
+      currentExpression.value += 'x' // Вставляем x после числа или закрывающей скобки
+    }
+    currentExpression.value += value
+  } else if (value === '()') {
     handleParenthesis()
   } else {
     currentExpression.value += value
@@ -185,20 +206,26 @@ const pressed = (value: string) => {
 }
 
 const handleParenthesis = () => {
+  const lastChar = currentExpression.value.slice(-1)
   const openCount = (currentExpression.value.match(/\(/g) || []).length
   const closeCount = (currentExpression.value.match(/\)/g) || []).length
 
   if (
     openCount === closeCount ||
     currentExpression.value.length === 0 ||
-    /[+\-x÷(]/.test(currentExpression.value.slice(-1))
+    /[+\-x÷(]/.test(lastChar)
   ) {
+    // Если вводится открывающая скобка
+    if (isDecimalDigit(lastChar) || lastChar === ')') {
+      currentExpression.value += 'x' // Вставляем x после числа или закрывающей скобки
+    }
     currentExpression.value += '('
     isClosingParenthesisNeeded.value = true // Подсвечиваем кнопку, когда ввели открывающую
   } else {
     currentExpression.value += ')'
     isClosingParenthesisNeeded.value = false // Убираем подсветку, когда ввели закрывающую
   }
+  calculateSubtotal()
 }
 
 const calculate = () => {
@@ -207,6 +234,11 @@ const calculate = () => {
       // Проверка на недопустимые символы
       if (/[^0-9+\-x÷().,%]/.test(currentExpression.value)) {
         throw new SyntaxError('Illegal format used')
+      }
+
+      // Проверка на оператор в начале строки
+      if (/^[+\-x÷%]/.test(currentExpression.value)) {
+        throw new SyntaxError('Operator at the beginning of the expression')
       }
 
       // Проверка на несбалансированные скобки
@@ -253,9 +285,14 @@ const clear = () => {
   tokens.value = []
   currentExpression.value = ''
   isResultCalculated.value = false
+  isClosingParenthesisNeeded.value = false
 }
 
 const clearEntry = () => {
+  if (isClosingParenthesisNeeded.value) {
+    isClosingParenthesisNeeded.value = false
+  }
+
   if (currentExpression.value.length > 0) {
     // Получаем токены из текущего выражения
     const currentTokens = tokenizeExpression(currentExpression.value)
@@ -282,6 +319,9 @@ const backSpace = () => {
     currentExpression.value = currentExpression.value.slice(0, -1)
     calculateSubtotal() // Пересчитываем промежуточный результат
   }
+  if (isClosingParenthesisNeeded.value) {
+    isClosingParenthesisNeeded.value = false
+  }
 }
 
 const percent = () => {
@@ -303,7 +343,7 @@ const calculateSubtotal = () => {
       result.value = evaluate(ast.value)
     } catch (err) {
       if (err instanceof SyntaxError) {
-        error.value = 'Illegal format used'
+        error.value = err.message
         result.value = null
       } else {
         error.value = 'An unexpected error occurred'
@@ -440,10 +480,8 @@ const tokenizeExpression = (input: string): Token[] => {
       const prevChar = index > 0 ? input.charAt(index - 1) : ''
       const nextChar = input.charAt(index + 1)
       if (index === 0 || prevChar === '(') {
-        if (isDecimalDigit(nextChar) || nextChar === '.' || nextChar === ',') {
-          isNegative = true
-          getCurrentChar() // Consume the '-'
-        }
+        isNegative = true
+        getCurrentChar() // Consume the '-'
       }
     }
 
@@ -514,6 +552,16 @@ const tokenizeExpression = (input: string): Token[] => {
     skipSpaces()
     if (peekCurrentChar() === '') {
       return undefined
+    }
+
+    // Check for open parenthesis
+    if (peekCurrentChar() === '(') {
+      return createToken('Operator', getCurrentChar())
+    }
+
+    // Check for operator at the beginning of the string
+    if (index === 0 && /[+\-x÷%]/.test(peekCurrentChar())) {
+      throw new SyntaxError('Operator at the beginning of the expression')
     }
 
     token = scanNumber()
@@ -678,7 +726,13 @@ const evaluate = (node: ASTNode | null): number | null => {
       }
 
       if (node.right.type === 'PercentNumber') {
-        right = left * right
+        if (node.operator === '+' || node.operator === '-') {
+          right = left * right // Процент от левого операнда (как сейчас)
+        } else if (node.operator === '*' || node.operator === '/') {
+          // Для умножения и деления просто используем процент как есть
+        } else {
+          return null
+        }
       }
 
       let result: number
@@ -752,7 +806,7 @@ const formattedResult = computed(() => {
 }
 .calc {
   margin: 0;
-  font-size: 1rem;
+  font-size: 2rem;
   font-weight: bold;
   padding: 15px;
 }
@@ -831,6 +885,36 @@ img {
 .highlightParenthesis {
   box-shadow: 0 0 30px white; /* Пример подсветки */
   transition: box-shadow 0.2s ease;
+}
+.error {
+  color: crimson;
+  font-size: 1.6rem;
+  font-weight: bold;
+  /* padding: 15px; */
+  margin-top: 0;
+  text-align: center;
+  position: relative; /* Добавляем позиционирование */
+}
+
+/* Стили для анимации */
+.error-slide-enter-active,
+.error-slide-leave-active {
+  transition: all 0.5s ease;
+}
+
+.error-slide-enter-from {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+.error-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-100%);
+}
+.error-slide-enter-to,
+.error-slide-leave-from {
+  opacity: 1;
+  transform: translateX(0);
 }
 </style>
 
