@@ -1,31 +1,19 @@
-<!-- <template>
-  <div class="calculator">
-    <div class="display">
-      <input
-        type="text"
-        v-model="expression"
-        placeholder="Enter an expression, jackass..."
-      />
-      <p class="calc">Current Expression: {{ expression }}</p>
-      <p class="result">Tokens:</p>
-      <ul>
-        <li v-for="(token, index) in tokens" :key="index">
-          {{ token.type }}: {{ token.value }}
-        </li>
-      </ul>
-      <p class="ast">AST: {{ ast }}</p>
-      <p class="result">Result: {{ result }}</p>
-      <p v-if="error" class="error">Error: {{ error }}</p>
-    </div>
-  </div>
-</template> -->
-
 <template>
   <div class="calculator">
-    <button class="history">
+    <button @click="showHistory = true" class="history">
       <img src="./../assets/img/icons8-history-48.png" alt="" />
     </button>
     <div class="display">
+      <Teleport to="body">
+        <History
+          v-if="showHistory"
+          :historyItems="historyItems"
+          @select="selectFromHistory"
+          @close="showHistory = false"
+          @clear="clearHistory"
+        />
+      </Teleport>
+      <div v-if="memoryItems.length > 0" class="memory-indicator">M</div>
       <p class="calc" :class="{ activeResult: isResultCalculated }">
         {{ currentExpression }}
       </p>
@@ -39,7 +27,7 @@
     <div class="keyboard-up">
       <button @click="backSpace()" class="brown">Backspace</button>
       <button @click="clearEntry()" class="brown">CE</button>
-      <button @click="clear()" class="brown">C</button>
+      <button @click="clearAll()" class="brown">C</button>
     </div>
     <div class="keyboard">
       <button
@@ -49,13 +37,9 @@
       >
         (&nbsp;&nbsp;)
       </button>
-      <button class="gray">
-        <img src="./../assets/img/m+.svg" alt="m+" />
-      </button>
-      <button class="gray ms">ms</button>
-      <button class="gray">
-        <img src="./../assets/img/mr.svg" alt="mr" />
-      </button>
+      <button @click="plusItem()" class="gray ms">M+</button>
+      <button @click="minusItem()" class="gray ms">M&minus;</button>
+      <button @click="saveItem()" class="gray ms">M</button>
       <button @click="negate()" class="brown">
         <img src="./../assets/img/plus-minus.svg" alt="plus-minus" />
       </button>
@@ -139,6 +123,7 @@
 </template>
 
 <script setup lang="ts">
+import History from './History.vue'
 import { ref, computed, watch } from 'vue'
 
 // Define a type for the token
@@ -179,6 +164,9 @@ const expression = ref('')
 const currentExpression = ref<string>('')
 const isResultCalculated = ref(false)
 const isClosingParenthesisNeeded = ref(false)
+const memoryItems = ref<string[]>([])
+const historyItems = ref<string[]>([])
+const showHistory = ref(false)
 
 // Buttons compartment
 
@@ -257,12 +245,22 @@ const calculate = () => {
       tokens.value = tokenizeExpression(currentExpression.value)
       ast.value = parseExpression(tokens.value)
       result.value = evaluate(ast.value)
-      firstOperand.value = formattedResult.value
-      currentExpression.value = formattedResult.value
+      // Сначала вычисляем formattedResult
+      const resultToHistory = formattedResult.value
+      firstOperand.value = resultToHistory
+      currentExpression.value = resultToHistory
       secondOperand.value = null
       operator.value = null
       result.value = null
       isResultCalculated.value = true
+
+      // Добавляем в историю после успешного вычисления
+      const historyString = tokens.value.map((token) => token.value).join('') // Преобразуем массив токенов в строку
+      historyItems.value.push(`${historyString} = ${resultToHistory}`) // Добавляем в historyItems
+      // Ограничиваем количество элементов в истории (например, до 10)
+      if (historyItems.value.length > 10) {
+        historyItems.value.shift() // Удаляем самый старый элемент
+      }
     } catch (err) {
       if (err instanceof SyntaxError) {
         error.value = err.message // Используем сообщение об ошибке из SyntaxError
@@ -275,7 +273,7 @@ const calculate = () => {
   }
 }
 
-const clear = () => {
+const clearAll = () => {
   firstOperand.value = null
   secondOperand.value = null
   operator.value = null
@@ -286,6 +284,7 @@ const clear = () => {
   currentExpression.value = ''
   isResultCalculated.value = false
   isClosingParenthesisNeeded.value = false
+  memoryItems.value = []
 }
 
 const clearEntry = () => {
@@ -353,6 +352,59 @@ const calculateSubtotal = () => {
   } else {
     result.value = null
   }
+}
+
+// Memory button compartment
+
+const saveItem = () => {
+  // Добавляем только если есть что добавить
+  if (formattedResult.value) {
+    memoryItems.value.push(formattedResult.value)
+  } else if (currentExpression.value) {
+    memoryItems.value.push(currentExpression.value)
+  }
+  // Ограничиваем количество элементов в истории (например, до 10)
+  if (memoryItems.value.length > 10) {
+    memoryItems.value.shift() // Удаляем самый старый элемент
+  }
+  currentExpression.value = ''
+  console.log('Memory items:', memoryItems.value)
+}
+
+const handleMemoryOperation = (operation: '+' | '-') => {
+  if (memoryItems.value.length > 0) {
+    const memoryValue = parseFloat(memoryItems.value[0])
+    if (!isNaN(memoryValue)) {
+      if (currentExpression.value.length === 0) {
+        currentExpression.value = memoryItems.value[0]
+      } else {
+        currentExpression.value += operation + memoryItems.value[0]
+      }
+      calculateSubtotal()
+    } else {
+      error.value = 'Invalid value in memory'
+    }
+  } else {
+    error.value = 'Memory is empty'
+  }
+}
+
+const plusItem = () => {
+  handleMemoryOperation('+')
+}
+
+const minusItem = () => {
+  handleMemoryOperation('-')
+}
+
+const selectFromHistory = (item: string) => {
+  currentExpression.value = item
+  showHistory.value = false
+}
+
+const clearHistory = () => {
+  historyItems.value = []
+  showHistory.value = false
 }
 
 // Tokenizer and evaluator compartment
@@ -788,6 +840,7 @@ const formattedResult = computed(() => {
   margin: 0 0 20px 50px;
 }
 .display {
+  position: relative;
   margin: 0 auto;
   max-width: 429px;
   width: 100%;
@@ -881,6 +934,7 @@ img {
   color: #ffffff;
   font-weight: 600;
   font-size: 1.6rem;
+  padding: 12px;
 }
 .highlightParenthesis {
   box-shadow: 0 0 30px white; /* Пример подсветки */
@@ -901,12 +955,10 @@ img {
 .error-slide-leave-active {
   transition: all 0.5s ease;
 }
-
 .error-slide-enter-from {
   opacity: 0;
   transform: translateX(100%);
 }
-
 .error-slide-leave-to {
   opacity: 0;
   transform: translateX(-100%);
@@ -916,40 +968,13 @@ img {
   opacity: 1;
   transform: translateX(0);
 }
+.memory-indicator {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #6b31e1;
+  z-index: 10;
+}
 </style>
-
-<!-- <style scoped>
-.calculator {
-  font-family: Arial, sans-serif;
-  max-width: 400px;
-  margin: 0 auto;
-  padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-}
-.display {
-  margin-bottom: 20px;
-}
-input {
-  width: 100%;
-  padding: 10px;
-  font-size: 16px;
-  margin-bottom: 10px;
-}
-.calc,
-.result,
-.error {
-  font-size: 18px;
-  margin: 10px 0;
-}
-.error {
-  color: rgb(237, 89, 131);
-}
-ul {
-  list-style-type: none;
-  padding: 0;
-}
-li {
-  margin: 5px 0;
-}
-</style> -->
