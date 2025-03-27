@@ -1,18 +1,9 @@
 <template>
   <div class="calculator">
-    <button @click="showHistory = true" class="history">
+    <button @click="showHistory = !showHistory" class="history">
       <img src="./../assets/img/icons8-history-48.png" alt="" />
     </button>
     <div class="display">
-      <Teleport to="body">
-        <History
-          v-if="showHistory"
-          :historyItems="historyItems"
-          @select="selectFromHistory"
-          @close="showHistory = false"
-          @clear="clearHistory"
-        />
-      </Teleport>
       <div v-if="memoryItems.length > 0" class="memory-indicator">M</div>
       <p class="calc" :class="{ activeResult: isResultCalculated }">
         {{ currentExpression }}
@@ -29,102 +20,113 @@
       <button @click="clearEntry()" class="brown">CE</button>
       <button @click="clearAll()" class="brown">C</button>
     </div>
-    <div class="keyboard">
-      <button
-        @click="pressed('()')"
-        class="brown"
-        :class="{ highlightParenthesis: isClosingParenthesisNeeded }"
-      >
-        (&nbsp;&nbsp;)
-      </button>
-      <button @click="plusItem()" class="gray ms">M+</button>
-      <button @click="minusItem()" class="gray ms">M&minus;</button>
-      <button @click="saveItem()" class="gray ms">M</button>
-      <button @click="negate()" class="brown">
-        <img src="./../assets/img/plus-minus.svg" alt="plus-minus" />
-      </button>
-      <button @click="percent()" class="brown">
-        <img
-          id="percentage"
-          src="./../assets/img/icons8-percentage-100.png"
-          alt="percentage"
-        />
-      </button>
-      <button
-        @click="
-          ;(operator = '÷'), (currentExpression += '÷'), calculateSubtotal()
-        "
-        class="brown"
-      >
-        <img src="./../assets/img/divide.svg" alt="divide" />
-      </button>
-      <button
-        @click="
-          ;(operator = 'x'), (currentExpression += 'x'), calculateSubtotal()
-        "
-        class="brown"
-      >
-        <img src="./../assets/img/multiply.svg" alt="multiply" />
-      </button>
-      <button @click="pressed('7')" class="black">
-        <img src="./../assets/img/seven.svg" alt="seven" />
-      </button>
-      <button @click="pressed('8')" class="black">
-        <img src="./../assets/img/eight.svg" alt="eight" />
-      </button>
-      <button @click="pressed('9')" class="black">
-        <img src="./../assets/img/nine.svg" alt="nine" />
-      </button>
-      <button
-        @click="
-          ;(operator = '-'), (currentExpression += '-'), calculateSubtotal()
-        "
-        class="brown"
-      >
-        <img src="./../assets/img/minus.svg" alt="minus" />
-      </button>
-      <button @click="pressed('4')" class="black">
-        <img src="./../assets/img/four.svg" alt="four" />
-      </button>
-      <button @click="pressed('5')" class="black">
-        <img src="./../assets/img/five.svg" alt="five" />
-      </button>
-      <button @click="pressed('6')" class="black">
-        <img src="./../assets/img/six.svg" alt="six" />
-      </button>
-      <button
-        @click="
-          ;(operator = '+'), (currentExpression += '+'), calculateSubtotal()
-        "
-        class="brown"
-      >
-        <img src="./../assets/img/plus.svg" alt="plus" />
-      </button>
-      <button @click="pressed('1')" class="black">
-        <img src="./../assets/img/one.svg" alt="one" />
-      </button>
-      <button @click="pressed('2')" class="black">
-        <img src="./../assets/img/two.svg" alt="two" />
-      </button>
-      <button @click="pressed('3')" class="black">
-        <img src="./../assets/img/three.svg" alt="three" />
-      </button>
-      <button @click="calculate()" class="orange">
-        <img src="./../assets/img/equal.svg" alt="equal" />
-      </button>
-      <button @click="pressed('0')" class="black box0">
-        <img src="./../assets/img/zero.svg" alt="zero" />
-      </button>
-      <button @click="pressed(',')" class="black">
-        <img src="./../assets/img/comma.svg" alt="comma" />
-      </button>
+    <div class="keyboard-container">
+      <Transition name="history-slide">
+        <div v-show="showHistory" class="history_view">
+          <History
+            :historyItems="historyItems"
+            @select="selectFromHistory"
+            @clear="clearHistory"
+          />
+        </div>
+      </Transition>
+      <div class="keyboard">
+        <button
+          @click="pressed('()')"
+          class="brown"
+          :class="{ highlightParenthesis: isClosingParenthesisNeeded }"
+        >
+          (&nbsp;&nbsp;)
+        </button>
+        <button @click="plusItem()" class="gray ms">M+</button>
+        <button @click="minusItem()" class="gray ms">M&minus;</button>
+        <button @click="saveItem()" class="gray ms">M</button>
+        <button @click="negate()" class="brown">
+          <img src="./../assets/img/plus-minus.svg" alt="plus-minus" />
+        </button>
+        <button @click="percent()" class="brown">
+          <img
+            id="percentage"
+            src="./../assets/img/icons8-percentage-100.png"
+            alt="percentage"
+          />
+        </button>
+        <button
+          @click="
+            ;(operator = '÷'), (currentExpression += '÷'), calculateSubtotal()
+          "
+          class="brown"
+        >
+          <img src="./../assets/img/divide.svg" alt="divide" />
+        </button>
+        <button
+          @click="
+            ;(operator = 'x'), (currentExpression += 'x'), calculateSubtotal()
+          "
+          class="brown"
+        >
+          <img src="./../assets/img/multiply.svg" alt="multiply" />
+        </button>
+        <button @click="pressed('7')" class="black">
+          <img src="./../assets/img/seven.svg" alt="seven" />
+        </button>
+        <button @click="pressed('8')" class="black">
+          <img src="./../assets/img/eight.svg" alt="eight" />
+        </button>
+        <button @click="pressed('9')" class="black">
+          <img src="./../assets/img/nine.svg" alt="nine" />
+        </button>
+        <button
+          @click="
+            ;(operator = '-'), (currentExpression += '-'), calculateSubtotal()
+          "
+          class="brown"
+        >
+          <img src="./../assets/img/minus.svg" alt="minus" />
+        </button>
+        <button @click="pressed('4')" class="black">
+          <img src="./../assets/img/four.svg" alt="four" />
+        </button>
+        <button @click="pressed('5')" class="black">
+          <img src="./../assets/img/five.svg" alt="five" />
+        </button>
+        <button @click="pressed('6')" class="black">
+          <img src="./../assets/img/six.svg" alt="six" />
+        </button>
+        <button
+          @click="
+            ;(operator = '+'), (currentExpression += '+'), calculateSubtotal()
+          "
+          class="brown"
+        >
+          <img src="./../assets/img/plus.svg" alt="plus" />
+        </button>
+        <button @click="pressed('1')" class="black">
+          <img src="./../assets/img/one.svg" alt="one" />
+        </button>
+        <button @click="pressed('2')" class="black">
+          <img src="./../assets/img/two.svg" alt="two" />
+        </button>
+        <button @click="pressed('3')" class="black">
+          <img src="./../assets/img/three.svg" alt="three" />
+        </button>
+        <button @click="calculate()" class="orange">
+          <img src="./../assets/img/equal.svg" alt="equal" />
+        </button>
+        <button @click="pressed('0')" class="black box0">
+          <img src="./../assets/img/zero.svg" alt="zero" />
+        </button>
+        <button @click="pressed(',')" class="black">
+          <img src="./../assets/img/comma.svg" alt="comma" />
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import History from './History.vue'
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 
 // Define a type for the token
 type Token = {
@@ -167,6 +169,7 @@ const isClosingParenthesisNeeded = ref(false)
 const memoryItems = ref<string[]>([])
 const historyItems = ref<string[]>([])
 const showHistory = ref(false)
+const historyAnimation = ref('')
 
 // Buttons compartment
 
@@ -258,7 +261,7 @@ const calculate = () => {
       const historyString = tokens.value.map((token) => token.value).join('') // Преобразуем массив токенов в строку
       historyItems.value.push(`${historyString} = ${resultToHistory}`) // Добавляем в historyItems
       // Ограничиваем количество элементов в истории (например, до 10)
-      if (historyItems.value.length > 10) {
+      if (historyItems.value.length > 20) {
         historyItems.value.shift() // Удаляем самый старый элемент
       }
     } catch (err) {
@@ -397,6 +400,25 @@ const minusItem = () => {
   handleMemoryOperation('-')
 }
 
+// History button compartment
+
+// Load history from localStorage on component mount
+onMounted(() => {
+  const savedHistory = localStorage.getItem('calculatorHistory')
+  if (savedHistory) {
+    historyItems.value = JSON.parse(savedHistory)
+  }
+})
+
+// Watch for changes in historyItems and save to localStorage
+watch(
+  historyItems,
+  (newHistory) => {
+    localStorage.setItem('calculatorHistory', JSON.stringify(newHistory))
+  },
+  { deep: true }
+)
+
 const selectFromHistory = (item: string) => {
   currentExpression.value = item
   showHistory.value = false
@@ -405,6 +427,7 @@ const selectFromHistory = (item: string) => {
 const clearHistory = () => {
   historyItems.value = []
   showHistory.value = false
+  localStorage.removeItem('calculatorHistory') // Очищаем localStorage
 }
 
 // Tokenizer and evaluator compartment
@@ -888,6 +911,37 @@ const formattedResult = computed(() => {
   border-radius: 8px;
   cursor: pointer;
 }
+.keyboard-container {
+  position: relative;
+  overflow: hidden;
+}
+.history_view {
+  position: absolute;
+  background-color: #090909;
+  top: 0;
+  left: 0;
+  width: 73%;
+  height: 96%;
+  border-right: 2px solid #efb187;
+  z-index: 10;
+}
+.history-slide-enter-active,
+.history-slide-leave-active {
+  transition: all 0.5s ease-in-out;
+}
+.history-slide-enter-from {
+  opacity: 0;
+  transform: translateX(-100%);
+}
+.history-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-100%);
+}
+.history-slide-enter-to,
+.history-slide-leave-from {
+  opacity: 1;
+  transform: translateX(0);
+}
 .keyboard {
   margin: 0 auto;
   padding: 18px;
@@ -896,6 +950,7 @@ const formattedResult = computed(() => {
   column-gap: 14px;
   max-width: 429px;
   row-gap: 26px;
+  z-index: 1;
 }
 .keyboard button {
   border-radius: 8px;
@@ -949,7 +1004,6 @@ img {
   text-align: center;
   position: relative; /* Добавляем позиционирование */
 }
-
 /* Стили для анимации */
 .error-slide-enter-active,
 .error-slide-leave-active {
