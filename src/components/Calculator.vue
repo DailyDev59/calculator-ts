@@ -5,9 +5,15 @@
     </button>
     <div class="display">
       <div v-if="memoryItems.length > 0" class="memory-indicator">M</div>
-      <p class="calc" :class="{ activeResult: isResultCalculated }">
-        {{ currentExpression }}
-      </p>
+      <Transition name="calc-slide" mode="out-in">
+        <p
+          v-if="!isCalculating"
+          class="calc"
+          :class="{ activeResult: isResultCalculated }"
+        >
+          {{ currentExpression }}
+        </p>
+      </Transition>
       <Transition name="error-slide">
         <p v-show="error" class="error">{{ error }}</p>
       </Transition>
@@ -169,7 +175,7 @@ const isClosingParenthesisNeeded = ref(false)
 const memoryItems = ref<string[]>([])
 const historyItems = ref<string[]>([])
 const showHistory = ref(false)
-const historyAnimation = ref('')
+const isCalculating = ref(false)
 
 // Buttons compartment
 
@@ -220,60 +226,67 @@ const handleParenthesis = () => {
 }
 
 const calculate = () => {
-  if (currentExpression.value.length > 0) {
-    try {
-      // Проверка на недопустимые символы
-      if (/[^0-9+\-x÷().,%]/.test(currentExpression.value)) {
-        throw new SyntaxError('Illegal format used')
-      }
+  isCalculating.value = true // Запускаем анимацию
 
-      // Проверка на оператор в начале строки
-      if (/^[+\-x÷%]/.test(currentExpression.value)) {
-        throw new SyntaxError('Operator at the beginning of the expression')
-      }
+  setTimeout(() => {
+    if (currentExpression.value.length > 0) {
+      try {
+        // Проверка на недопустимые символы
+        if (/[^0-9+\-x÷().,%]/.test(currentExpression.value)) {
+          throw new SyntaxError('Illegal format used')
+        }
 
-      // Проверка на несбалансированные скобки
-      const openCount = (currentExpression.value.match(/\(/g) || []).length
-      const closeCount = (currentExpression.value.match(/\)/g) || []).length
-      if (openCount !== closeCount) {
-        throw new SyntaxError('Unbalanced parentheses')
-      }
+        // Проверка на оператор в начале строки
+        if (/^[+\-x÷%]/.test(currentExpression.value)) {
+          throw new SyntaxError('Operator at the beginning of the expression')
+        }
 
-      // Проверка на недопустимое расположение скобок
-      if (/\)\(/.test(currentExpression.value)) {
-        throw new SyntaxError('Invalid parentheses placement')
-      }
+        // Проверка на несбалансированные скобки
+        const openCount = (currentExpression.value.match(/\(/g) || []).length
+        const closeCount = (currentExpression.value.match(/\)/g) || []).length
+        if (openCount !== closeCount) {
+          throw new SyntaxError('Unbalanced parentheses')
+        }
 
-      error.value = undefined
-      tokens.value = tokenizeExpression(currentExpression.value)
-      ast.value = parseExpression(tokens.value)
-      result.value = evaluate(ast.value)
-      // Сначала вычисляем formattedResult
-      const resultToHistory = formattedResult.value
-      firstOperand.value = resultToHistory
-      currentExpression.value = resultToHistory
-      secondOperand.value = null
-      operator.value = null
-      result.value = null
-      isResultCalculated.value = true
+        // Проверка на недопустимое расположение скобок
+        if (/\)\(/.test(currentExpression.value)) {
+          throw new SyntaxError('Invalid parentheses placement')
+        }
 
-      // Добавляем в историю после успешного вычисления
-      const historyString = tokens.value.map((token) => token.value).join('') // Преобразуем массив токенов в строку
-      historyItems.value.push(`${historyString} = ${resultToHistory}`) // Добавляем в historyItems
-      // Ограничиваем количество элементов в истории (например, до 10)
-      if (historyItems.value.length > 20) {
-        historyItems.value.shift() // Удаляем самый старый элемент
-      }
-    } catch (err) {
-      if (err instanceof SyntaxError) {
-        error.value = err.message // Используем сообщение об ошибке из SyntaxError
+        error.value = undefined
+        tokens.value = tokenizeExpression(currentExpression.value)
+        ast.value = parseExpression(tokens.value)
+        result.value = evaluate(ast.value)
+        // Сначала вычисляем formattedResult
+        const resultToHistory = formattedResult.value
+        firstOperand.value = resultToHistory
+        currentExpression.value = resultToHistory
+        secondOperand.value = null
+        operator.value = null
         result.value = null
-      } else {
-        error.value = 'An unexpected error occurred'
-        result.value = null
+        isResultCalculated.value = true
+
+        // Добавляем в историю после успешного вычисления
+        const historyString = tokens.value.map((token) => token.value).join('') // Преобразуем массив токенов в строку
+        historyItems.value.push(`${historyString} = ${resultToHistory}`) // Добавляем в historyItems
+        // Ограничиваем количество элементов в истории (например, до 10)
+        if (historyItems.value.length > 20) {
+          historyItems.value.shift() // Удаляем самый старый элемент
+        }
+        isResultCalculated.value = true
+        isCalculating.value = false
+      } catch (err) {
+        isCalculating.value = false
+        if (err instanceof SyntaxError) {
+          error.value = err.message // Используем сообщение об ошибке из SyntaxError
+          result.value = null
+        } else {
+          error.value = 'An unexpected error occurred'
+          result.value = null
+        }
       }
     }
-  }
+  }, 0)
 }
 
 const clearAll = () => {
@@ -886,6 +899,23 @@ const formattedResult = computed(() => {
   font-weight: bold;
   padding: 15px;
 }
+.calc-slide-enter-active,
+.calc-slide-leave-active {
+  transition: all 0.2s ease-in-out;
+}
+.calc-slide-enter-from {
+  opacity: 0;
+  transform: translateY(70%);
+}
+.calc-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-70%);
+}
+.calc-slide-enter-to,
+.calc-slide-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
 .result {
   margin: 0;
   font-size: 1.5rem;
@@ -927,7 +957,7 @@ const formattedResult = computed(() => {
 }
 .history-slide-enter-active,
 .history-slide-leave-active {
-  transition: all 0.5s ease-in-out;
+  transition: all 0.2s ease-in-out;
 }
 .history-slide-enter-from {
   opacity: 0;
@@ -1007,7 +1037,7 @@ img {
 /* Стили для анимации */
 .error-slide-enter-active,
 .error-slide-leave-active {
-  transition: all 0.5s ease;
+  transition: all 0.2s ease;
 }
 .error-slide-enter-from {
   opacity: 0;
