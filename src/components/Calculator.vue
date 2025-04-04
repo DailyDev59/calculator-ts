@@ -862,7 +862,8 @@ const formattedResult = computed(() => {
 .calculator {
   max-width: 470px;
   width: 100%;
-  height: 875px;
+  max-height: 875px;
+  height: 100%;
   background-color: #090909;
   color: white;
   margin: 0 auto;
@@ -928,12 +929,15 @@ const formattedResult = computed(() => {
 }
 .keyboard-up {
   display: grid;
-  padding: 18px;
+  max-height: 5vh;
+  height: 34%;
+  padding: 4.2%;
   grid-template-columns: repeat(3, 1fr);
-  column-gap: 15px;
+  column-gap: 3.4%;
 }
 .keyboard-up button {
-  min-height: 57px;
+  /* max-height: 53px;
+height: 100%; */
   font-family: Inter, sans-serif;
   font-size: 1.6em;
   font-weight: 700;

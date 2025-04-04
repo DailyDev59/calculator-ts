@@ -16,9 +16,6 @@
 <script setup lang="ts">
 import { PropType, ref } from 'vue'
 
-const markerHistoryAnimation = ref('')
-
-
 const props = defineProps({
   historyItems: {
     type: Array as PropType<string[]>,
