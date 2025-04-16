@@ -1,13 +1,20 @@
-  html, body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    font-family: 'Inter', sans-serif;
-  }
-  .background {
-    background-color: #6b31e1;
-    width: 100vw;
-    height: 100vh; 
-    padding: 2rem;
-    box-sizing: border-box;
-  }  
+html,
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
+.background {
+  background-color: #6b31e1;
+  width: 100vw;
+  height: 100vh;
+  padding: 2rem;
+  box-sizing: border-box;
+}
+.icon {
+  display: block;  
+  margin: -1px 0 0 -5px;
+  width: 88px;
+  height: 55px;  
+}

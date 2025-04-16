@@ -61,8 +61,7 @@ const formatHistoryItem = (item: string) => {
   padding: 0;
   margin: 0;
   overflow-y: auto; /* Добавляем скролл, если элементов много */
-  max-height: 300px; /* Ограничиваем максимальную высоту */
-}
+  }
 .history-content li {
   cursor: pointer;
   padding: 10px;

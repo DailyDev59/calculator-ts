@@ -42,28 +42,28 @@
           class="brown"
           :class="{ highlightParenthesis: isClosingParenthesisNeeded }"
         >
-          (&nbsp;&nbsp;)
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#parentheses"></use>
+          </svg>
         </button>
-        <button @click="plusItem()" class="gray ms">M+</button>
+        <button @click="plusItem()" class="gray ms">M&plus;</button>
         <button @click="minusItem()" class="gray ms">M&minus;</button>
         <button @click="saveItem()" class="gray ms">M</button>
         <button @click="negate()" class="brown">
-          <img src="./../assets/img/plus-minus.svg" alt="plus-minus" />
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#negate"></use>
+          </svg>
         </button>
-        <button @click="percent()" class="brown">
-          <img
-            id="percentage"
-            src="./../assets/img/icons8-percentage-100.png"
-            alt="percentage"
-          />
-        </button>
+        <button @click="percent()" class="brown ms">%</button>
         <button
           @click="
             ;(operator = '÷'), (currentExpression += '÷'), calculateSubtotal()
           "
           class="brown"
         >
-          <img src="./../assets/img/divide.svg" alt="divide" />
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#divide"></use>
+          </svg>
         </button>
         <button
           @click="
@@ -71,16 +71,24 @@
           "
           class="brown"
         >
-          <img src="./../assets/img/multiply.svg" alt="multiply" />
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#multiply"></use>
+          </svg>
         </button>
         <button @click="pressed('7')" class="black">
-          <img src="./../assets/img/seven.svg" alt="seven" />
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#seven"></use>
+          </svg>
         </button>
         <button @click="pressed('8')" class="black">
-          <img src="./../assets/img/eight.svg" alt="eight" />
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#eight"></use>
+          </svg>
         </button>
         <button @click="pressed('9')" class="black">
-          <img src="./../assets/img/nine.svg" alt="nine" />
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#nine"></use>
+          </svg>
         </button>
         <button
           @click="
@@ -88,16 +96,24 @@
           "
           class="brown"
         >
-          <img src="./../assets/img/minus.svg" alt="minus" />
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#subtract"></use>
+          </svg>
         </button>
         <button @click="pressed('4')" class="black">
-          <img src="./../assets/img/four.svg" alt="four" />
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#four"></use>
+          </svg>
         </button>
         <button @click="pressed('5')" class="black">
-          <img src="./../assets/img/five.svg" alt="five" />
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#five"></use>
+          </svg>
         </button>
         <button @click="pressed('6')" class="black">
-          <img src="./../assets/img/six.svg" alt="six" />
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#six"></use>
+          </svg>
         </button>
         <button
           @click="
@@ -105,25 +121,39 @@
           "
           class="brown"
         >
-          <img src="./../assets/img/plus.svg" alt="plus" />
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#plus"></use>
+          </svg>
         </button>
         <button @click="pressed('1')" class="black">
-          <img src="./../assets/img/one.svg" alt="one" />
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#one"></use>
+          </svg>
         </button>
         <button @click="pressed('2')" class="black">
-          <img src="./../assets/img/two.svg" alt="two" />
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#two"></use>
+          </svg>
         </button>
         <button @click="pressed('3')" class="black">
-          <img src="./../assets/img/three.svg" alt="three" />
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#three"></use>
+          </svg>
         </button>
         <button @click="calculate()" class="orange">
-          <img src="./../assets/img/equal.svg" alt="equal" />
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#equal"></use>
+          </svg>
         </button>
         <button @click="pressed('0')" class="black box0">
-          <img src="./../assets/img/zero.svg" alt="zero" />
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#zero"></use>
+          </svg>
         </button>
         <button @click="pressed(',')" class="black">
-          <img src="./../assets/img/comma.svg" alt="comma" />
+          <svg class="icon">
+            <use xlink:href="./../assets/sprite.svg#comma"></use>
+          </svg>
         </button>
       </div>
     </div>
@@ -860,15 +890,20 @@ const formattedResult = computed(() => {
 
 <style scoped>
 .calculator {
-  max-width: 470px;
+  max-width: 420px;
   width: 100%;
-  max-height: 875px;
-  height: 100%;
+  max-height: 870px;
+  height: calc(184vw * (9 / 8.8));
+  /*
+    The height is calculated based on 184vw to create a "buffer" zone.
+    This ensures that the height only starts to decrease when the width of the calculator
+    itself starts to shrink, maintaining the aspect ratio.
+  */
+  padding: 1.4%;
   background-color: #090909;
   color: white;
   margin: 0 auto;
-  border-radius: 70px;
-  padding-top: 1.5em;
+  border-radius: 4vh;
 }
 .history {
   border: 0;
@@ -931,9 +966,9 @@ const formattedResult = computed(() => {
   display: grid;
   max-height: 5vh;
   height: 34%;
-  padding: 4.2%;
   grid-template-columns: repeat(3, 1fr);
   column-gap: 3.4%;
+  margin: 3% 0;
 }
 .keyboard-up button {
   /* max-height: 53px;
@@ -942,7 +977,7 @@ height: 100%; */
   font-size: 1.6em;
   font-weight: 700;
   color: #ffffff;
-  border-radius: 8px;
+  border-radius: 1vw;
   cursor: pointer;
 }
 .keyboard-container {
@@ -978,7 +1013,6 @@ height: 100%; */
 }
 .keyboard {
   margin: 0 auto;
-  padding: 18px;
   display: grid;
   grid-template-columns: repeat(4, minmax(60px, 1fr));
   column-gap: 14px;
@@ -987,13 +1021,8 @@ height: 100%; */
   z-index: 1;
 }
 .keyboard button {
-  border-radius: 8px;
+  border-radius: 1vw;
   cursor: pointer;
-}
-img {
-  display: block;
-  margin-left: -4px;
-  margin-top: -1px;
 }
 .box0 {
   grid-column: span 2;
@@ -1003,10 +1032,6 @@ img {
 }
 .brown {
   background: linear-gradient(to bottom, #efb187 30%, #392314 90%);
-  font-family: Inter, sans-serif;
-  font-size: 1.6em;
-  font-weight: 700;
-  color: #ffffff;
 }
 .black {
   background: linear-gradient(to bottom, #6e6e6e 30%, #040404 90%);
@@ -1015,14 +1040,11 @@ img {
   background: linear-gradient(to bottom, #f69545 30%, #411e01 90%);
   grid-row: span 2;
 }
-#percentage {
-  display: inline;
-  width: 44px;
-}
 .ms {
   color: #ffffff;
+  font-family: Inter, sanserif;
   font-weight: 600;
-  font-size: 1.6rem;
+  font-size: 1.6em;
   padding: 12px;
 }
 .highlightParenthesis {
