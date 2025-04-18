@@ -22,9 +22,21 @@
       </p>
     </div>
     <div class="keyboard-up">
-      <button @click="backSpace()" class="brown">Backspace</button>
-      <button @click="clearEntry()" class="brown">CE</button>
-      <button @click="clearAll()" class="brown">C</button>
+      <button @click="backSpace()" class="brown">
+        <svg class="icon">
+          <use xlink:href="./../assets/sprite.svg#backspace"></use>
+        </svg>
+      </button>
+      <button @click="clearEntry()" class="brown">
+        <svg class="icon del">
+          <use xlink:href="./../assets/sprite.svg#CE"></use>
+        </svg>
+      </button>
+      <button @click="clearAll()" class="brown">
+        <svg class="icon del">
+          <use xlink:href="./../assets/sprite.svg#C"></use>
+        </svg>
+      </button>
     </div>
     <div class="keyboard-container">
       <Transition name="history-slide">
@@ -39,22 +51,38 @@
       <div class="keyboard">
         <button
           @click="pressed('()')"
-          class="brown"
+          class="brown ms"
           :class="{ highlightParenthesis: isClosingParenthesisNeeded }"
         >
-          <svg class="icon">
+          <svg class="icon mem">
             <use xlink:href="./../assets/sprite.svg#parentheses"></use>
           </svg>
         </button>
-        <button @click="plusItem()" class="gray ms">M&plus;</button>
-        <button @click="minusItem()" class="gray ms">M&minus;</button>
-        <button @click="saveItem()" class="gray ms">M</button>
+        <button @click="plusItem()" class="gray ms">
+          <svg class="icon mem">
+            <use xlink:href="./../assets/sprite.svg#M+"></use>
+          </svg>
+        </button>
+        <button @click="minusItem()" class="gray ms">
+          <svg class="icon mem">
+            <use xlink:href="./../assets/sprite.svg#M-"></use>
+          </svg>
+        </button>
+        <button @click="saveItem()" class="gray ms">
+          <svg class="icon mem">
+            <use xlink:href="./../assets/sprite.svg#M"></use>
+          </svg>
+        </button>
         <button @click="negate()" class="brown">
           <svg class="icon">
             <use xlink:href="./../assets/sprite.svg#negate"></use>
           </svg>
         </button>
-        <button @click="percent()" class="brown ms">%</button>
+        <button @click="percent()" class="brown ms">
+          <svg class="icon del">
+            <use xlink:href="./../assets/sprite.svg#percentage"></use>
+          </svg>
+        </button>
         <button
           @click="
             ;(operator = '÷'), (currentExpression += '÷'), calculateSubtotal()
@@ -375,7 +403,12 @@ const percent = () => {
 }
 
 const negate = () => {
-  currentExpression.value += '(-'
+  const lastChar = currentExpression.value.slice(-1)
+  if (lastChar === ')') {
+    currentExpression.value += 'x(-'
+  } else {
+    currentExpression.value += '(-'
+  }
   calculateSubtotal()
 }
 
@@ -890,16 +923,18 @@ const formattedResult = computed(() => {
 
 <style scoped>
 .calculator {
-  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  max-width: 390px;
   width: 100%;
-  max-height: 870px;
+  max-height: 800px;
   height: calc(184vw * (9 / 8.8));
   /*
     The height is calculated based on 184vw to create a "buffer" zone.
     This ensures that the height only starts to decrease when the width of the calculator
     itself starts to shrink, maintaining the aspect ratio.
   */
-  padding: 1.4%;
+  padding: 2% 1.3%;
   background-color: #090909;
   color: white;
   margin: 0 auto;
@@ -907,9 +942,11 @@ const formattedResult = computed(() => {
 }
 .history {
   border: 0;
+  width: 50%;
   background-color: #090909;
   cursor: pointer;
   margin: 0 0 20px 50px;
+  text-align: left;
 }
 .display {
   position: relative;
@@ -964,25 +1001,22 @@ const formattedResult = computed(() => {
 }
 .keyboard-up {
   display: grid;
-  max-height: 5vh;
-  height: 34%;
-  grid-template-columns: repeat(3, 1fr);
-  column-gap: 3.4%;
+  max-height: 5vh; 
+  grid-template-columns: repeat(3, minmax(20px, 1fr));
+  column-gap: 2.4%;
   margin: 3% 0;
 }
 .keyboard-up button {
-  /* max-height: 53px;
-height: 100%; */
-  font-family: Inter, sans-serif;
-  font-size: 1.6em;
-  font-weight: 700;
-  color: #ffffff;
+  max-height: 62px;
+  aspect-ratio: 16 / 8;
   border-radius: 1vw;
   cursor: pointer;
 }
 .keyboard-container {
   position: relative;
   overflow: hidden;
+  flex-grow: 1;
+  padding-bottom: 10%;
 }
 .history_view {
   position: absolute;
@@ -1014,17 +1048,20 @@ height: 100%; */
 .keyboard {
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(4, minmax(60px, 1fr));
-  column-gap: 14px;
+  grid-template-columns: repeat(4, minmax(20px, 1fr));
+  column-gap: 2.4%;
   max-width: 429px;
-  row-gap: 26px;
-  z-index: 1;
+  height: 100%;
 }
 .keyboard button {
+  max-height: 62px;
+  aspect-ratio: 16 / 11;
   border-radius: 1vw;
   cursor: pointer;
 }
 .box0 {
+  max-width: 190px;
+  width: 100%;
   grid-column: span 2;
 }
 .gray {
@@ -1086,5 +1123,13 @@ height: 100%; */
   font-weight: bold;
   color: #6b31e1;
   z-index: 10;
+}
+.del {
+  width: 40%;
+  margin: 0 auto;
+}
+.mem {
+  width: 60%;
+  margin: 0 auto;
 }
 </style>
