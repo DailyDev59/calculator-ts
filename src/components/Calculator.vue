@@ -1,7 +1,9 @@
 <template>
   <div class="calculator">
     <button @click="showHistory = !showHistory" class="history">
-      <img src="./../assets/img/icons8-history-48.png" alt="" />
+      <svg class="icon">
+          <use xlink:href="./../assets/sprite.svg#history"></use>
+        </svg>
     </button>
     <div class="display">
       <div v-if="memoryItems.length > 0" class="memory-indicator">M</div>
@@ -182,7 +184,7 @@
           <svg class="icon">
             <use xlink:href="./../assets/sprite.svg#comma"></use>
           </svg>
-        </button>
+        </button>        
       </div>
     </div>
   </div>
@@ -275,10 +277,10 @@ const handleParenthesis = () => {
       currentExpression.value += 'x' // Вставляем x после числа или закрывающей скобки
     }
     currentExpression.value += '('
-    isClosingParenthesisNeeded.value = true // Подсвечиваем кнопку, когда ввели открывающую
+    isClosingParenthesisNeeded.value = true // Подсвечиваем кнопку, когда ввели открывающую скобку
   } else {
     currentExpression.value += ')'
-    isClosingParenthesisNeeded.value = false // Убираем подсветку, когда ввели закрывающую
+    isClosingParenthesisNeeded.value = false // Убираем подсветку, когда ввели закрывающую скобку
   }
   calculateSubtotal()
 }
@@ -406,8 +408,10 @@ const negate = () => {
   const lastChar = currentExpression.value.slice(-1)
   if (lastChar === ')') {
     currentExpression.value += 'x(-'
+    isClosingParenthesisNeeded.value = true // Подсвечиваем кнопку, когда ввели открывающую скобку
   } else {
-    currentExpression.value += '(-'
+    currentExpression.value += 'x(-' 
+    isClosingParenthesisNeeded.value = true // Подсвечиваем кнопку, когда ввели открывающую скобку   
   }
   calculateSubtotal()
 }
@@ -925,9 +929,9 @@ const formattedResult = computed(() => {
 .calculator {
   display: flex;
   flex-direction: column;
-  max-width: 390px;
+  max-width: 350px;
   width: 100%;
-  max-height: 800px;
+  max-height: 740px;
   height: calc(184vw * (9 / 8.8));
   /*
     The height is calculated based on 184vw to create a "buffer" zone.
@@ -941,20 +945,22 @@ const formattedResult = computed(() => {
   border-radius: 4vh;
 }
 .history {
-  border: 0;
-  width: 50%;
+  border: 0;  
+  max-width: 15%;
+  width: 100%;
+  max-height: 10%;
+  height: 100%;
   background-color: #090909;
   cursor: pointer;
-  margin: 0 0 20px 50px;
+  margin: 1% 0 2% 8%;
   text-align: left;
 }
 .display {
-  position: relative;
+  position: relative;  
   margin: 0 auto;
-  max-width: 429px;
   width: 100%;
   max-height: 118px;
-  height: 100%;
+  aspect-ratio: 16 / 6;
   background: linear-gradient(
     to bottom,
     #e8ead8 0%,
@@ -1001,7 +1007,7 @@ const formattedResult = computed(() => {
 }
 .keyboard-up {
   display: grid;
-  max-height: 5vh; 
+  max-height: 5vh;
   grid-template-columns: repeat(3, minmax(20px, 1fr));
   column-gap: 2.4%;
   margin: 3% 0;
@@ -1016,7 +1022,7 @@ const formattedResult = computed(() => {
   position: relative;
   overflow: hidden;
   flex-grow: 1;
-  padding-bottom: 10%;
+  padding-bottom: 15%;
 }
 .history_view {
   position: absolute;
@@ -1048,20 +1054,20 @@ const formattedResult = computed(() => {
 .keyboard {
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(4, minmax(20px, 1fr));
+  grid-template-columns: repeat(4, minmax(20px, 1fr));  
   column-gap: 2.4%;
+  row-gap: 4.8%;
   max-width: 429px;
   height: 100%;
 }
-.keyboard button {
-  max-height: 62px;
+.keyboard button {  
   aspect-ratio: 16 / 11;
   border-radius: 1vw;
   cursor: pointer;
 }
 .box0 {
-  max-width: 190px;
   width: 100%;
+  height: 47%;
   grid-column: span 2;
 }
 .gray {
@@ -1074,6 +1080,8 @@ const formattedResult = computed(() => {
   background: linear-gradient(to bottom, #6e6e6e 30%, #040404 90%);
 }
 .orange {
+  width: 100%;  
+  height: 69%;
   background: linear-gradient(to bottom, #f69545 30%, #411e01 90%);
   grid-row: span 2;
 }
