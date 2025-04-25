@@ -948,7 +948,7 @@ const formattedResult = computed(() => {
   border: 0;  
   max-width: 15%;
   width: 100%;
-  max-height: 10%;
+  max-height: 7.5%;
   height: 100%;
   background-color: #090909;
   cursor: pointer;
@@ -972,11 +972,11 @@ const formattedResult = computed(() => {
   line-height: 1;
   text-align: right;
 }
-.calc {
+.calc {  
   margin: 0;
-  font-size: 2rem;
+  font-size: calc(3vw + 10px);
   font-weight: bold;
-  padding: 15px;
+  padding: 5%;
 }
 .calc-slide-enter-active,
 .calc-slide-leave-active {
@@ -996,11 +996,14 @@ const formattedResult = computed(() => {
   transform: translateY(0);
 }
 .result {
+  position: absolute;
+  bottom: 0;
+  right: 0;
   margin: 0;
-  font-size: 1.5rem;
+  font-size: calc(3vw + 10px);
   font-weight: bold;
   color: #6b31e1;
-  padding-right: 15px;
+  padding: 0 5% 5% 0;
 }
 .activeResult {
   color: #348806;
@@ -1098,9 +1101,8 @@ const formattedResult = computed(() => {
 }
 .error {
   color: crimson;
-  font-size: 1.6rem;
-  font-weight: bold;
-  /* padding: 15px; */
+  font-size: calc(3vw + 10px);
+  font-weight: bold; 
   margin-top: 0;
   text-align: center;
   position: relative; /* Добавляем позиционирование */
