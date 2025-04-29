@@ -2,8 +2,8 @@
   <div class="calculator">
     <button @click="showHistory = !showHistory" class="history">
       <svg class="icon">
-          <use xlink:href="./../assets/sprite.svg#history"></use>
-        </svg>
+        <use xlink:href="./../assets/sprite.svg#history"></use>
+      </svg>
     </button>
     <div class="display">
       <div v-if="memoryItems.length > 0" class="memory-indicator">M</div>
@@ -184,7 +184,7 @@
           <svg class="icon">
             <use xlink:href="./../assets/sprite.svg#comma"></use>
           </svg>
-        </button>        
+        </button>
       </div>
     </div>
   </div>
@@ -236,17 +236,33 @@ const memoryItems = ref<string[]>([])
 const historyItems = ref<string[]>([])
 const showHistory = ref(false)
 const isCalculating = ref(false)
+const markerInitialZero = ref('')
 
 // Buttons compartment
 
 const pressed = (value: string) => {
   const lastChar = currentExpression.value.slice(-1)
 
+  // Если вставляем оператор (кроме %), добавляем Zero-Width Space перед ним
+  if (isOperator(value) && value !== '%') {
+    currentExpression.value += '\u200B' + value
+  }
+
   if (isDecimalDigit(value) || value === ',') {
     // Если вводится число или запятая
     if (lastChar === ')') {
       currentExpression.value += 'x' // Вставляем x после закрывающей скобки
     }
+
+    // Убираем начальные нули перед вводом новой цифры
+    if (
+      isDecimalDigit(value) &&
+      currentExpression.value.match(/(^|[-+x/()\u200B])0+$/)
+    ) {
+      // Если последний символ - ноль (или несколько нулей) после оператора/скобки
+      currentExpression.value = currentExpression.value.replace(/0+$/, '')
+    }
+
     currentExpression.value += value
   } else if (value === '(') {
     // Если вводится открывающая скобка
@@ -260,6 +276,11 @@ const pressed = (value: string) => {
     currentExpression.value += value
   }
   calculateSubtotal()
+}
+
+// Проверка, является ли символ оператором
+const isOperator = (char: string) => {
+  return ['+', '-', '×', '÷', '(', ')'].includes(char)
 }
 
 const handleParenthesis = () => {
@@ -410,8 +431,8 @@ const negate = () => {
     currentExpression.value += 'x(-'
     isClosingParenthesisNeeded.value = true // Подсвечиваем кнопку, когда ввели открывающую скобку
   } else {
-    currentExpression.value += 'x(-' 
-    isClosingParenthesisNeeded.value = true // Подсвечиваем кнопку, когда ввели открывающую скобку   
+    currentExpression.value += 'x(-'
+    isClosingParenthesisNeeded.value = true // Подсвечиваем кнопку, когда ввели открывающую скобку
   }
   calculateSubtotal()
 }
@@ -940,12 +961,11 @@ const formattedResult = computed(() => {
   */
   padding: 2% 1.3%;
   background-color: #090909;
-  color: white;
   margin: 0 auto;
   border-radius: 4vh;
 }
 .history {
-  border: 0;  
+  border: 0;
   max-width: 15%;
   width: 100%;
   max-height: 7.5%;
@@ -956,9 +976,12 @@ const formattedResult = computed(() => {
   text-align: left;
 }
 .display {
-  position: relative;  
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   margin: 0 auto;
-  width: 100%;
+  padding: 2.5%;
+  width: 93.5%;
   max-height: 118px;
   aspect-ratio: 16 / 6;
   background: linear-gradient(
@@ -971,12 +994,19 @@ const formattedResult = computed(() => {
   color: black;
   line-height: 1;
   text-align: right;
-}
-.calc {  
-  margin: 0;
-  font-size: calc(3vw + 10px);
+  font-size: 2.6vh;
   font-weight: bold;
-  padding: 5%;
+}
+.calc {
+  white-space: pre-wrap; /* Сохраняем пробелы и переносы */
+  word-break: break-word; /* Перенос по словам */
+  overflow-wrap: anywhere; /* Разрешаем перенос в любом месте (если нет пробелов) */
+  margin: 0;
+  flex-grow: 0.8;
+}
+/* Запрещаем перенос после % */
+.calc::after {
+  content: '\200B'; /* Zero-Width Space */
 }
 .calc-slide-enter-active,
 .calc-slide-leave-active {
@@ -996,14 +1026,8 @@ const formattedResult = computed(() => {
   transform: translateY(0);
 }
 .result {
-  position: absolute;
-  bottom: 0;
-  right: 0;
   margin: 0;
-  font-size: calc(3vw + 10px);
-  font-weight: bold;
   color: #6b31e1;
-  padding: 0 5% 5% 0;
 }
 .activeResult {
   color: #348806;
@@ -1057,13 +1081,13 @@ const formattedResult = computed(() => {
 .keyboard {
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(4, minmax(20px, 1fr));  
+  grid-template-columns: repeat(4, minmax(20px, 1fr));
   column-gap: 2.4%;
   row-gap: 4.8%;
   max-width: 429px;
   height: 100%;
 }
-.keyboard button {  
+.keyboard button {
   aspect-ratio: 16 / 11;
   border-radius: 1vw;
   cursor: pointer;
@@ -1083,7 +1107,7 @@ const formattedResult = computed(() => {
   background: linear-gradient(to bottom, #6e6e6e 30%, #040404 90%);
 }
 .orange {
-  width: 100%;  
+  width: 100%;
   height: 69%;
   background: linear-gradient(to bottom, #f69545 30%, #411e01 90%);
   grid-row: span 2;
@@ -1102,7 +1126,7 @@ const formattedResult = computed(() => {
 .error {
   color: crimson;
   font-size: calc(3vw + 10px);
-  font-weight: bold; 
+  font-weight: bold;
   margin-top: 0;
   text-align: center;
   position: relative; /* Добавляем позиционирование */
@@ -1141,5 +1165,34 @@ const formattedResult = computed(() => {
 .mem {
   width: 60%;
   margin: 0 auto;
+}
+
+/* Media queries */
+
+@media (min-width: 1440px) and (max-width: 2560px) {
+  .calculator {
+    padding: 1%;
+  }
+}
+@media (min-width: 375px) and (max-width: 425px) {
+  .calculator {
+    padding: 2%;
+  }
+  .display {
+    font-size: 2.4vh;
+  }
+}
+@media (min-width: 320px) and (max-width: 375px) {
+  .calculator {
+    padding: 3%;
+  }
+  .display {
+    font-size: 2vh;
+  }
+}
+@media (max-width: 320px) {
+  .display {
+    font-size: 1.6vh;
+  }
 }
 </style>
