@@ -236,7 +236,6 @@ const memoryItems = ref<string[]>([])
 const historyItems = ref<string[]>([])
 const showHistory = ref(false)
 const isCalculating = ref(false)
-const markerInitialZero = ref('')
 
 // Buttons compartment
 
@@ -248,7 +247,7 @@ const pressed = (value: string) => {
     currentExpression.value += '\u200B' + value
   }
 
-  if (isDecimalDigit(value) || value === ',') {
+  if (isNumberOrComma(value) || value === ',') {
     // Если вводится число или запятая
     if (lastChar === ')') {
       currentExpression.value += 'x' // Вставляем x после закрывающей скобки
@@ -256,7 +255,7 @@ const pressed = (value: string) => {
 
     // Убираем начальные нули перед вводом новой цифры
     if (
-      isDecimalDigit(value) &&
+      isNumberOrComma(value) &&
       currentExpression.value.match(/(^|[-+x/()\u200B])0+$/)
     ) {
       // Если последний символ - ноль (или несколько нулей) после оператора/скобки
@@ -266,7 +265,7 @@ const pressed = (value: string) => {
     currentExpression.value += value
   } else if (value === '(') {
     // Если вводится открывающая скобка
-    if (isDecimalDigit(lastChar) || lastChar === ')') {
+    if (isNumberOrComma(lastChar) || lastChar === ')') {
       currentExpression.value += 'x' // Вставляем x после числа или закрывающей скобки
     }
     currentExpression.value += value
@@ -294,7 +293,7 @@ const handleParenthesis = () => {
     /[+\-x÷(]/.test(lastChar)
   ) {
     // Если вводится открывающая скобка
-    if (isDecimalDigit(lastChar) || lastChar === ')') {
+    if (isNumberOrComma(lastChar) || lastChar === ')') {
       currentExpression.value += 'x' // Вставляем x после числа или закрывающей скобки
     }
     currentExpression.value += '('
@@ -558,7 +557,7 @@ const isLetter = (ch: string) => {
   return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
 }
 
-const isDecimalDigit = (ch: string) => {
+const isNumberOrComma = (ch: string) => {
   return ch >= '0' && ch <= '9'
 }
 
@@ -622,7 +621,7 @@ const tokenizeExpression = (input: string): Token[] => {
   }
 
   const isIdentifierPart = (ch: string) => {
-    return isIdentifierStart(ch) || isDecimalDigit(ch)
+    return isIdentifierStart(ch) || isNumberOrComma(ch)
   }
 
   const scanIdentifier = (): Token | undefined => {
@@ -662,7 +661,7 @@ const tokenizeExpression = (input: string): Token[] => {
     }
 
     ch = peekCurrentChar()
-    if (!isDecimalDigit(ch) && ch !== '.' && ch !== ',') {
+    if (!isNumberOrComma(ch) && ch !== '.' && ch !== ',') {
       // Добавили проверку на запятую
       if (!isNegative) return undefined
     }
@@ -676,7 +675,7 @@ const tokenizeExpression = (input: string): Token[] => {
       number += getCurrentChar()
       while (true) {
         ch = peekCurrentChar()
-        if (!isDecimalDigit(ch)) {
+        if (!isNumberOrComma(ch)) {
           break
         }
         number += getCurrentChar()
@@ -689,7 +688,7 @@ const tokenizeExpression = (input: string): Token[] => {
       getCurrentChar() // Пропускаем запятую или точку
       while (true) {
         ch = peekCurrentChar()
-        if (!isDecimalDigit(ch)) {
+        if (!isNumberOrComma(ch)) {
           break
         }
         number += getCurrentChar()
@@ -699,11 +698,11 @@ const tokenizeExpression = (input: string): Token[] => {
     if (ch === 'e' || ch === 'E') {
       number += getCurrentChar()
       ch = peekCurrentChar()
-      if (ch === '+' || ch === '-' || isDecimalDigit(ch)) {
+      if (ch === '+' || ch === '-' || isNumberOrComma(ch)) {
         number += getCurrentChar()
         while (true) {
           ch = peekCurrentChar()
-          if (!isDecimalDigit(ch)) {
+          if (!isNumberOrComma(ch)) {
             break
           }
           number += getCurrentChar()
@@ -976,6 +975,7 @@ const formattedResult = computed(() => {
   text-align: left;
 }
 .display {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
